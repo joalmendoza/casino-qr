@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control Casino - Lector QR</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Control de casino</h1>
+    <p>Escanea el QR de cada persona antes de servir</p>
+  </div>
+
+  <div id="aviso-demo" class="aviso hidden">Modo demo: solo valida QR registrados en este mismo equipo.</div>
+
+  <div id="paso-pin" class="card">
+    <label for="pin">PIN del casino</label>
+    <input id="pin" type="password" inputmode="numeric" placeholder="••••">
+    <button class="btn" id="btn-entrar">Abrir lector</button>
+  </div>
+
+  <div id="paso-lector" class="hidden">
+    <div id="resultado" class="banner hidden"></div>
+    <div class="card">
+      <div id="lector"></div>
+      <p class="dato centro" id="estado">Apunta la cámara al QR…</p>
+      <label for="manual">¿No lee? Escribe el código</label>
+      <div class="fila">
+        <input id="manual" placeholder="C261016-XXXXXX" style="text-transform:uppercase">
+        <button class="btn" id="btn-manual" style="flex:0 0 100px;margin-bottom:14px">Validar</button>
+      </div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><b id="cont-ok">0</b><span>Servidos (esta sesión)</span></div>
+      <div class="kpi"><b id="cont-mal">0</b><span>Rechazados</span></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+  if (!CONFIG.API_URL) $('aviso-demo').classList.remove('hidden');
+
+  let pin = '';
+  let ocupado = false;
+  let ultimo = { id: '', t: 0 };
+  let ok = 0, mal = 0;
+
+  $('btn-entrar').onclick = () => {
+    pin = $('pin').value.trim();
+    if (!pin) return;
+    $('paso-pin').classList.add('hidden');
+    $('paso-lector').classList.remove('hidden');
+    iniciarCamara();
+  };
+
+  function iniciarCamara() {
+    const lector = new Html5Qrcode('lector');
+    lector.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: 230 },
+      texto => validar(texto)
+    ).catch(err => {
+      $('estado').textContent = 'No se pudo abrir la cámara (' + err + '). Usa el ingreso manual.';
+    });
+  }
+
+  async function validar(codigo) {
+    codigo = codigo.trim().toUpperCase();
+    // La cámara lee el mismo QR muchas veces por segundo; ignoramos repeticiones cercanas
+    if (ocupado || (codigo === ultimo.id && Date.now() - ultimo.t < 4000)) return;
+    ocupado = true;
+    ultimo = { id: codigo, t: Date.now() };
+    $('estado').textContent = 'Validando…';
+
+    try {
+      const r = await api('validar', { id: codigo, pin });
+      mostrar(r);
+    } catch (err) {
+      mostrar({ ok: false, error: 'Sin conexión: ' + err.message });
+    } finally {
+      ocupado = false;
+      $('estado').textContent = 'Apunta la cámara al QR…';
+    }
+  }
+
+  function mostrar(r) {
+    const box = $('resultado');
+    box.className = 'banner ' + (r.ok ? 'ok' : 'mal');
+    box.innerHTML = '';
+    const h = document.createElement('h2');
+    h.textContent = r.ok ? '✔ PUEDE ALMORZAR' : '✖ ' + r.error;
+    box.appendChild(h);
+    if (r.nombre) {
+      const p = document.createElement('p');
+      p.textContent = r.nombre + (r.area ? ' · ' + r.area : '');
+      box.appendChild(p);
+    }
+    if (r.ok && r.horaIngreso) {
+      const p = document.createElement('p');
+      p.textContent = `Ingresó ${r.horaIngreso} · Almuerzo ${r.horaAlmuerzo}`;
+      box.appendChild(p);
+    }
+    r.ok ? ok++ : mal++;
+    $('cont-ok').textContent = ok;
+    $('cont-mal').textContent = mal;
+    if (navigator.vibrate) navigator.vibrate(r.ok ? 120 : [80, 60, 80]);
+    if (r.error === 'PIN incorrecto') location.reload();
+  }
+
+  $('btn-manual').onclick = () => {
+    const v = $('manual').value;
+    if (v) { ultimo.id = ''; validar(v); $('manual').value = ''; }
+  };
+</script>
+</body>
+</html>

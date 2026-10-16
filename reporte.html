@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reporte diario - Casino</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Reporte del día</h1>
+    <p>Ingresos y almuerzos registrados hoy</p>
+  </div>
+
+  <div id="paso-pin" class="card">
+    <label for="pin">PIN</label>
+    <input id="pin" type="password" inputmode="numeric">
+    <button class="btn" id="btn-ver">Ver reporte</button>
+  </div>
+
+  <div id="paso-datos" class="hidden">
+    <div class="kpis">
+      <div class="kpi"><b id="k-ing">0</b><span>Ingresaron</span></div>
+      <div class="kpi"><b id="k-alm">0</b><span>Almorzaron</span></div>
+      <div class="kpi"><b id="k-pen">0</b><span>Pendientes</span></div>
+    </div>
+    <div class="card" style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Nombre</th><th>Área</th><th>Ingreso</th><th>Almuerzo</th></tr></thead>
+        <tbody id="tabla"></tbody>
+      </table>
+    </div>
+    <button class="btn" id="btn-csv">Descargar CSV</button>
+    <button class="btn sec" id="btn-refrescar">Actualizar</button>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+  let pin = '', filas = [];
+
+  async function cargar() {
+    const r = await api('resumen', { pin });
+    if (!r.ok) { alert(r.error); return false; }
+    filas = r.filas;
+    const alm = filas.filter(f => f.almorzo).length;
+    $('k-ing').textContent = filas.length;
+    $('k-alm').textContent = alm;
+    $('k-pen').textContent = filas.length - alm;
+    const tb = $('tabla');
+    tb.innerHTML = '';
+    filas.forEach(f => {
+      const tr = tb.insertRow();
+      [f.nombre, f.area, f.hora, f.almorzo ? f.horaAlmuerzo : '—'].forEach(v => tr.insertCell().textContent = v);
+    });
+    return true;
+  }
+
+  $('btn-ver').onclick = async () => {
+    pin = $('pin').value.trim();
+    if (await cargar()) {
+      $('paso-pin').classList.add('hidden');
+      $('paso-datos').classList.remove('hidden');
+    }
+  };
+  $('btn-refrescar').onclick = cargar;
+
+  $('btn-csv').onclick = () => {
+    const cab = 'ID;Fecha;Nombre;Area;HoraIngreso;Almorzo;HoraAlmuerzo';
+    const lineas = filas.map(f => [f.id, f.fecha, f.nombre, f.area, f.hora, f.almorzo ? 'SI' : 'NO', f.horaAlmuerzo]
+      .map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';'));
+    const blob = new Blob(['﻿' + [cab, ...lineas].join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `casino-${hoyISO()}.csv`;
+    a.click();
+  };
+</script>
+</body>
+</html>
