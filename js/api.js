@@ -1,16 +1,57 @@
 // Capa de conexión. Todas las pantallas llaman a api(accion, datos).
 // Con API_URL configurada habla con Apps Script; sin ella usa localStorage (demo).
 
+// Código del cliente: viene en el link (?c=ABC01) y queda recordado en el celular
+const CLIENTE = (() => {
+  const enLink = (new URLSearchParams(location.search).get('c') || '').trim().toUpperCase();
+  try {
+    if (enLink) localStorage.setItem('casino_cliente', enLink);
+    return enLink || localStorage.getItem('casino_cliente') || '';
+  } catch {
+    return enLink;
+  }
+})();
+
 async function api(accion, datos = {}) {
   if (CONFIG.API_URL) {
     // Sin headers a propósito: así el navegador manda text/plain y Apps Script no reclama por CORS.
     const resp = await fetch(CONFIG.API_URL, {
       method: 'POST',
-      body: JSON.stringify({ accion, ...datos })
+      body: JSON.stringify({ accion, cliente: CLIENTE, ...datos })
     });
     return resp.json();
   }
-  return demo[accion] ? demo[accion](datos) : { ok: false, error: 'Acción desconocida' };
+  if (!demo[accion]) return { ok: false, error: 'Acción desconocida' };
+  const lic = demo._licencia();
+  if (lic.bloqueado && (accion === 'registrar' || accion === 'validar')) {
+    return { ok: false, suspendido: true, error: lic.mensaje, licencia: lic };
+  }
+  return { ...demo[accion](datos), licencia: lic };
+}
+
+// Trae la configuración del cliente (áreas, datos de la empresa, hora tope y estado de la licencia)
+async function cargarConfig() {
+  const r = await api('config');
+  if (r.ok) {
+    if (r.areas && r.areas.length) CONFIG.AREAS = r.areas;
+    if (r.empresa) {
+      for (const [k, v] of Object.entries(r.empresa)) if (v) CONFIG[k] = v;
+    }
+  }
+  return r;
+}
+
+// Muestra el aviso de la suscripción (por vencer, en gracia o suspendida) en el elemento indicado
+function mostrarLicencia(lic, el) {
+  if (!el) return;
+  if (!lic || !lic.mensaje || lic.estado === 'activo') { el.classList.add('hidden'); return; }
+  el.textContent = lic.mensaje;
+  el.className = 'aviso-lic ' + (lic.bloqueado ? 'lic-mal' : 'lic-aviso');
+}
+
+// Agrega el código de cliente a un link interno
+function conCliente(url) {
+  return CLIENTE ? url + (url.includes('?') ? '&' : '?') + 'c=' + encodeURIComponent(CLIENTE) : url;
 }
 
 function hoyISO() {
@@ -37,6 +78,16 @@ function horaActual() {
 
 // ---------- Modo demo (solo este navegador) ----------
 const demo = {
+  // En demo se puede ver cómo se comporta la app según la licencia usando estos códigos en el link:
+  // ?c=DEMO-VENCE (por vencer) · ?c=DEMO-GRACIA (vencida, en gracia) · ?c=DEMO-SUSPENDIDO (bloqueada)
+  _licencia() {
+    const contacto = 'Contacta al proveedor del servicio.';
+    if (CLIENTE === 'DEMO-SUSPENDIDO') return { estado: 'suspendido', bloqueado: true, mensaje: 'Servicio suspendido. ' + contacto };
+    if (CLIENTE === 'DEMO-GRACIA') return { estado: 'gracia', bloqueado: false, mensaje: 'Tu suscripción venció. El servicio se suspenderá en 2 día(s) si no se registra el pago. ' + contacto };
+    if (CLIENTE === 'DEMO-VENCE') return { estado: 'por_vencer', bloqueado: false, mensaje: 'Tu suscripción vence en 3 días. Renueva para no perder el servicio.' };
+    return { estado: 'activo', bloqueado: false };
+  },
+
   _leer() {
     try { return JSON.parse(localStorage.getItem('casino_demo') || '[]'); } catch { return []; }
   },
@@ -50,7 +101,7 @@ const demo = {
 
   config() {
     const tope = this._tope(), ahora = horaActual();
-    return { ok: true, horaTope: tope, horaServidor: ahora, abierto: ahora <= tope };
+    return { ok: true, cliente: 'Demo', horaTope: tope, horaServidor: ahora, abierto: ahora <= tope, areas: CONFIG.AREAS };
   },
 
   guardarTope({ pin, horaTope }) {

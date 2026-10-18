@@ -101,3 +101,7 @@ th, td { padding: 8px 6px; border-bottom: 1px solid #e5e7eb; text-align: left; }
 .autoriza a { color: var(--azul2); }
 .check { display: flex; gap: 10px; align-items: flex-start; font-weight: normal; font-size: 13px; margin: 0; cursor: pointer; }
 .check input { width: 20px; height: 20px; margin: 0; flex: 0 0 20px; }
+
+.aviso-lic { padding: 12px; border-radius: 10px; font-size: 14px; margin-bottom: 12px; font-weight: bold; }
+.lic-aviso { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+.lic-mal { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }

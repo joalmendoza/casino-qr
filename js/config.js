@@ -3,6 +3,7 @@
 // Si se deja vacía, la app funciona en MODO DEMO (guarda todo en este navegador, sirve solo para probar).
 const CONFIG = {
   API_URL: '',
+  // Áreas para el modo demo (con servidor vienen de la hoja Licencias)
   AREAS: ['Producción', 'Mantenimiento', 'Control calidad', 'Logística', 'Seguridad', 'HSE', 'Gestión Humana', 'Contabilidad', 'Visitante'],
   // Si elige esta área, se pide además a qué área viene de visita
   AREA_VISITANTE: 'Visitante',
@@ -11,7 +12,8 @@ const CONFIG = {
   // Hora tope de registro si nadie la ha cambiado desde el reporte (formato 24 h)
   HORA_TOPE_DEFECTO: '09:30',
 
-  // Datos del responsable del tratamiento (Ley 1581 de 2012). Completa con los datos reales de la empresa.
+  // Datos del responsable del tratamiento (Ley 1581 de 2012) para el modo demo.
+  // Con servidor, estos datos y las áreas vienen de la hoja Licencias de cada cliente.
   EMPRESA: 'NOMBRE DE LA EMPRESA S.A.S.',
   NIT: '000.000.000-0',
   DIRECCION: 'Dirección de la empresa',

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tratamiento de datos personales - Casino</title>
-  <link rel="stylesheet" href="css/estilos.css?v=3">
+  <link rel="stylesheet" href="css/estilos.css?v=4">
   <style>
     .legal h2 { font-size: 16px; color: var(--azul); margin: 18px 0 6px; }
     .legal p, .legal li { font-size: 14px; line-height: 1.5; }
@@ -71,8 +71,10 @@
   <a class="btn sec" href="registro.html">Volver al registro</a>
 </div>
 
-<script src="js/config.js?v=3"></script>
+<script src="js/config.js?v=4"></script>
+<script src="js/api.js?v=4"></script>
 <script>
+  function pintar() {
   const datos = {
     'r-empresa': CONFIG.EMPRESA, 'r-nit': CONFIG.NIT, 'r-direccion': CONFIG.DIRECCION,
     'r-ciudad': CONFIG.CIUDAD, 'r-correo': CONFIG.CORREO_DATOS, 'r-telefono': CONFIG.TELEFONO,
@@ -81,6 +83,10 @@
   for (const [clase, valor] of Object.entries(datos)) {
     document.querySelectorAll('.' + clase).forEach(el => el.textContent = valor);
   }
+  }
+  pintar();
+  cargarConfig().then(pintar).catch(() => {});
+  document.querySelector('a.btn').href = conCliente('registro.html');
 </script>
 </body>
 </html>

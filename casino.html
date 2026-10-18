@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Control Casino - Lector QR</title>
-  <link rel="stylesheet" href="css/estilos.css?v=3">
+  <link rel="stylesheet" href="css/estilos.css?v=4">
 </head>
 <body>
 <div class="wrap">
@@ -20,6 +20,8 @@
     <input id="pin" type="password" inputmode="numeric" placeholder="••••">
     <button class="btn" id="btn-entrar">Abrir lector</button>
   </div>
+
+  <div id="aviso-licencia" class="hidden"></div>
 
   <div id="paso-lector" class="hidden">
     <div id="resultado" class="banner hidden"></div>
@@ -40,8 +42,8 @@
 </div>
 
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="js/config.js?v=3"></script>
-<script src="js/api.js?v=3"></script>
+<script src="js/config.js?v=4"></script>
+<script src="js/api.js?v=4"></script>
 <script>
   const $ = id => document.getElementById(id);
   if (!CONFIG.API_URL) $('aviso-demo').classList.remove('hidden');
@@ -54,6 +56,7 @@
   $('btn-entrar').onclick = () => {
     pin = $('pin').value.trim();
     if (!pin) return;
+    cargarConfig().then(r => mostrarLicencia(r.licencia, $('aviso-licencia'))).catch(() => {});
     $('paso-pin').classList.add('hidden');
     $('paso-lector').classList.remove('hidden');
     iniciarCamara();
@@ -94,7 +97,7 @@
     box.className = 'banner ' + (r.ok ? 'ok' : 'mal');
     box.innerHTML = '';
     const h = document.createElement('h2');
-    h.textContent = r.ok ? '✔ PUEDE ALMORZAR' : '✖ ' + r.error;
+    h.textContent = r.ok ? '✔ PUEDE ALMORZAR' : (r.suspendido ? r.error : '✖ ' + r.error);
     box.appendChild(h);
     if (r.nombre) {
       const p = document.createElement('p');
@@ -106,6 +109,8 @@
       p.textContent = `Ingresó ${r.horaIngreso} · Almuerzo ${r.horaAlmuerzo}`;
       box.appendChild(p);
     }
+    mostrarLicencia(r.licencia, $('aviso-licencia'));
+    if (r.suspendido) return;
     r.ok ? ok++ : mal++;
     $('cont-ok').textContent = ok;
     $('cont-mal').textContent = mal;

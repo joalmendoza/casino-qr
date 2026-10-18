@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Registro de ingreso - Casino</title>
-  <link rel="stylesheet" href="css/estilos.css?v=3">
+  <link rel="stylesheet" href="css/estilos.css?v=4">
 </head>
 <body>
 <div class="wrap">
@@ -14,6 +14,13 @@
   </div>
 
   <div id="aviso-demo" class="aviso hidden">Modo demo: los datos quedan solo en este equipo.</div>
+
+  <!-- Licencia suspendida -->
+  <div id="paso-suspendido" class="card centro hidden">
+    <h2 style="margin:0 0 6px;color:var(--mal)">Servicio no disponible</h2>
+    <p>El registro de ingreso no está disponible en este momento.</p>
+    <p class="dato">Acércate a portería o a Gestión Humana.</p>
+  </div>
 
   <!-- Registro cerrado por hora tope -->
   <div id="paso-cerrado" class="card centro hidden">
@@ -52,7 +59,7 @@
       <p>Tus datos (nombre, cédula, área, fecha y hora de ingreso y de almuerzo, y firma) serán tratados por
         <b class="r-empresa"></b> solo para controlar el ingreso y el servicio de casino, según la Ley 1581 de 2012.
         Puedes conocer, actualizar, rectificar o pedir que se eliminen tus datos escribiendo a <span class="r-correo"></span>.
-        <a href="politica.html" target="_blank" rel="noopener">Leer aviso de privacidad completo</a>.</p>
+        <a href="politica.html" id="link-politica" target="_blank" rel="noopener">Leer aviso de privacidad completo</a>.</p>
       <label class="check">
         <input type="checkbox" id="autoriza">
         <span>Autorizo de manera previa, expresa e informada el tratamiento de mis datos personales para estos fines.</span>
@@ -76,21 +83,28 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="js/config.js?v=3"></script>
-<script src="js/api.js?v=3"></script>
+<script src="js/config.js?v=4"></script>
+<script src="js/api.js?v=4"></script>
 <script>
   const $ = id => document.getElementById(id);
   if (!CONFIG.API_URL) $('aviso-demo').classList.remove('hidden');
 
-  document.querySelectorAll('.r-empresa').forEach(el => el.textContent = CONFIG.EMPRESA);
-  document.querySelectorAll('.r-correo').forEach(el => el.textContent = CONFIG.CORREO_DATOS);
 
   // La cédula se guarda solo con números/letras (sin puntos, espacios ni guiones)
   const limpiarCedula = v => v.replace(/[^0-9A-Za-z]/g, '').toUpperCase();
   $('cedula').addEventListener('input', () => { $('cedula').value = limpiarCedula($('cedula').value); });
 
-  CONFIG.AREAS.forEach(a => $('area').add(new Option(a, a)));
-  CONFIG.AREAS.filter(a => a !== CONFIG.AREA_VISITANTE).forEach(a => $('visita').add(new Option(a, a)));
+  // Áreas y datos de la empresa (vienen del servidor según el cliente)
+  function pintarConfig() {
+    document.querySelectorAll('.r-empresa').forEach(el => el.textContent = CONFIG.EMPRESA);
+    document.querySelectorAll('.r-correo').forEach(el => el.textContent = CONFIG.CORREO_DATOS);
+    $('area').length = 1;
+    $('visita').length = 1;
+    CONFIG.AREAS.forEach(a => $('area').add(new Option(a, a)));
+    CONFIG.AREAS.filter(a => a !== CONFIG.AREA_VISITANTE).forEach(a => $('visita').add(new Option(a, a)));
+  }
+  pintarConfig();
+  $('link-politica').href = conCliente('politica.html');
 
   // Si es visitante, mostramos el menú del área que visita
   $('area').onchange = () => {
@@ -108,7 +122,15 @@
     return d.toTimeString().slice(0, 5);
   };
 
+  function suspender() {
+    if (!$('paso-qr').classList.contains('hidden')) return;
+    $('paso-form').classList.add('hidden');
+    $('paso-cerrado').classList.add('hidden');
+    $('paso-suspendido').classList.remove('hidden');
+  }
+
   function cerrarRegistro() {
+    if (!$('paso-suspendido').classList.contains('hidden')) return;
     if (!$('paso-qr').classList.contains('hidden')) return;   // está viendo su QR, no lo tapamos
     $('paso-form').classList.add('hidden');
     $('paso-cerrado').classList.remove('hidden');
@@ -116,8 +138,11 @@
 
   async function cargarTope() {
     try {
-      const r = await api('config');
-      if (!r.ok) return;
+      const r = await cargarConfig();
+      if (!r.ok) { alert(r.error); return; }
+      pintarConfig();
+      // A las personas no les mostramos avisos de cobro, solo si está suspendido
+      if (r.licencia && r.licencia.bloqueado) { suspender(); return; }
       horaTope = r.horaTope;
       desfaseMin = aMin(r.horaServidor) - aMin(horaActual());
       document.querySelectorAll('.tope-txt').forEach(el => el.textContent = hora12(horaTope));
@@ -213,6 +238,7 @@
     btn.disabled = true; btn.textContent = 'Registrando…';
     try {
       const r = await api('registrar', { nombre, cedula, area, visita, firma: firmaLiviana(), autoriza: true, version: CONFIG.VERSION_AUTORIZACION });
+      if (r.suspendido) { suspender(); return; }
       if (r.cerrado) { alert(r.error); cerrarRegistro(); return; }
       if (!r.ok) throw new Error(r.error);
       try { localStorage.setItem('mi_qr', JSON.stringify(r)); } catch {}

@@ -93,31 +93,73 @@ En demo el registro y el casino tienen que ser el mismo equipo. Para uso real ha
 3. Ve a **Settings → Pages → Branch: main / (root) → Save**.
 4. En un par de minutos queda en `https://TU_USUARIO.github.io/casino-qr/`.
 
-### 2. Crear la planilla y el Apps Script
-1. Crea una planilla nueva en Google Sheets (ej: "Casino QR").
+### 2. Crear TU planilla de licencias y el servidor
+Todo queda en **tu** cuenta Google. Los clientes nunca ven el código del servidor ni pueden saltarse el bloqueo.
+
+1. Crea una planilla nueva en Google Sheets llamada **"Licencias Casino QR"**.
 2. Menú **Extensiones → Apps Script**.
 3. Borra lo que trae y pega el contenido de `apps-script/Code.gs`.
-4. Cambia `PIN_CASINO` por un PIN propio.
-5. En **Configuración del proyecto** (engranaje) marca "Mostrar archivo de manifiesto appsscript.json" y pega el contenido de `apps-script/appsscript.json` (ahí está la zona horaria de Colombia, America/Bogota).
-6. Selecciona la función `instalar` y presiona **Ejecutar**. Te pedirá permisos para la planilla y Drive: acepta.
+4. Arriba del código, cambia `CONTACTO_PROVEEDOR` (tu correo / WhatsApp, es lo que ve el cliente cuando se le suspende) y `URL_APP` si publicas en otro lado.
+5. En **Configuración del proyecto** (engranaje) marca "Mostrar archivo de manifiesto appsscript.json" y pega el contenido de `apps-script/appsscript.json` (zona horaria de Colombia, America/Bogota).
+6. Selecciona la función `instalar` y presiona **Ejecutar**. Acepta los permisos. Se crea la hoja **Licencias** con un cliente de ejemplo (`DEMO01`, PIN `1234`).
 
-### 3. Publicar el Apps Script
+### 3. Publicar el servidor
 1. **Implementar → Nueva implementación → tipo: Aplicación web**.
 2. Ejecutar como: **Yo**. Quién tiene acceso: **Cualquier usuario**.
-3. Copia la URL que termina en `/exec`.
+3. Copia la URL que termina en `/exec`, pégala en `API_URL` de `js/config.js` y sube el cambio.
 
-### 4. Conectar
-1. Abre `js/config.js`, pega la URL en `API_URL` y ajusta las áreas y el nombre de la empresa.
-2. Sube el cambio a GitHub.
+### 4. Dar de alta un cliente
+En la hoja **Licencias** agrega una fila:
+
+| Columna | Qué va |
+|---|---|
+| Codigo | Código corto único, va en los links. Ej: `ABC01` |
+| Cliente | Nombre comercial |
+| Estado | `Activo` o `Suspendido` |
+| Vence | Fecha hasta la que está pagado (dd/mm/aaaa) |
+| PIN | PIN del casino y del reporte de ese cliente |
+| HoraTope | Hora de cierre del registro (el cliente la cambia desde el reporte). Vacío = 09:30 |
+| Areas | Áreas separadas por coma. Vacío = las áreas por defecto |
+| RazonSocial, NIT, Direccion, Ciudad, CorreoDatos, Telefono | Datos del cliente para la autorización de datos y el aviso de privacidad |
+| HojaDatos | No la toques: se llena sola con la planilla de datos del cliente |
+| Notas | Lo que quieras (plan, valor, contacto) |
+
+Recarga la planilla y aparece el menú **Casino QR**. Selecciona la fila del cliente y usa **Ver links del cliente**: te da los 3 links con su código (`registro.html?c=ABC01`, etc.) y su PIN para entregárselos.
+
+La planilla con los registros de cada cliente se crea sola en tu Drive (carpeta **Casino QR - Clientes**) la primera vez que alguien se registra. Si el cliente la quiere ver, compártesela como lector.
 
 ### 5. Imprimir el afiche de entrada
-Genera un QR que apunte a `https://TU_USUARIO.github.io/casino-qr/registro.html` (cualquier generador gratis sirve, o el mismo `qrcodejs`) y pégalo en portería.
+Genera un QR que apunte al link de registro **con el código del cliente** (ej: `.../registro.html?c=ABC01`) y pégalo en portería. El celular recuerda el código, así que si después abren el link sin `?c=` sigue funcionando.
 
 > Si cambias `js/` o `css/`, sube el número `?v=` en los `<script>` y `<link>` de las páginas para que los celulares no se queden con la versión vieja guardada.
 
 > Ojo: cada vez que cambies `Code.gs` hay que hacer **Implementar → Gestionar implementaciones → Editar → Nueva versión**, si no sigue corriendo la versión anterior.
 
 ---
+
+## Suscripción mensual y bloqueo por no pago
+Cada cliente tiene una fila en la hoja **Licencias** con su fecha de vencimiento. El servidor la revisa en cada registro y en cada escaneo:
+
+| Situación | Qué pasa |
+|---|---|
+| Al día | Funciona normal |
+| Faltan 5 días o menos | El encargado ve un aviso amarillo en el reporte y en el casino. Las personas que se registran no ven nada |
+| Venció hace 3 días o menos (gracia) | Sigue funcionando, con aviso de que se va a suspender |
+| Más de 3 días vencido, o Estado = Suspendido | Registro y casino bloqueados con el mensaje "Servicio suspendido. Contacta al proveedor" |
+| Pagó | Menú **Casino QR → Renovar 1 mes** sobre su fila. Se reactiva al instante |
+
+- El **reporte sigue abriendo** aunque esté suspendido, para que el cliente pueda ver y descargar sus datos. Los datos nunca se borran.
+- Los días de aviso y de gracia se cambian arriba en `Code.gs` (`AVISO_DIAS`, `GRACIA_DIAS`).
+- **Renovar 1 mes** suma un mes desde la fecha de vencimiento (si todavía no ha pasado) o desde hoy (si ya pasó), y deja el estado en Activo.
+
+Para ver cómo se ve sin conectar nada, en modo demo usa estos links:
+`registro.html?c=DEMO-SUSPENDIDO`, `casino.html?c=DEMO-SUSPENDIDO`, `reporte.html?c=DEMO-VENCE`, `reporte.html?c=DEMO-GRACIA`. Para volver a la normalidad abre cualquier página con `?c=DEMO01`.
+
+## Mantener el código privado sin pagar
+- Los repos **privados en GitHub son gratis**. Lo que cobra GitHub es publicar Pages desde un repo privado.
+- Solución gratis: **Cloudflare Pages**. Pon el repo en privado (Settings → General → Danger Zone → Change visibility → Private), entra a https://pages.cloudflare.com con una cuenta gratis, **Create → Pages → Connect to Git**, elige `casino-qr`, sin comando de build y carpeta de salida `/`. Te queda en `https://casino-qr.pages.dev` y se actualiza solo con cada cambio en GitHub.
+- Después de pasar a Cloudflare cambia `URL_APP` en `Code.gs` y desactiva GitHub Pages.
+- Igual, lo que de verdad protege el negocio es que el servidor y la hoja de licencias están en tu cuenta: sin eso la app no funciona aunque alguien copie las páginas.
 
 ## Límites del plan gratis (de sobra para una planta)
 - Apps Script: ~20.000 llamadas al día y 6 min por ejecución. Cada registro o escaneo es una llamada.
@@ -135,7 +177,8 @@ Genera un QR que apunte a `https://TU_USUARIO.github.io/casino-qr/registro.html`
 - Antes de registrarse, la persona ve un resumen de para qué se usan sus datos y tiene que marcar la casilla de **autorización**. Sin eso no se puede registrar (lo valida también el servidor).
 - En la planilla queda la constancia en la columna `Autorizacion`: versión del texto aceptado, fecha y hora.
 - `politica.html` es el aviso de privacidad completo: responsable, datos, finalidades, derechos y cómo ejercerlos.
-- **Antes de usarla:** completa en `js/config.js` el nombre de la empresa, NIT, dirección, ciudad, correo y teléfono. Lo ideal es que el área jurídica o quien maneje la política de datos de la empresa revise el texto.
+- **Antes de usarla:** completa en la hoja Licencias la razón social, NIT, dirección, ciudad, correo y teléfono de cada cliente (cada cliente es el responsable del tratamiento de los datos de su gente).
+- Como los datos quedan en tu cuenta, tú eres **encargado del tratamiento**: en el contrato con cada cliente incluye una cláusula de transmisión de datos personales. Lo ideal es que el área jurídica o quien maneje la política de datos de la empresa revise el texto.
 - Si cambias el texto de la autorización, sube `VERSION_AUTORIZACION` en `js/config.js`.
 - En el casino solo se muestran los últimos 4 dígitos de la cédula.
 

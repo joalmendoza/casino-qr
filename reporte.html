@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reporte diario - Casino</title>
-  <link rel="stylesheet" href="css/estilos.css?v=3">
+  <link rel="stylesheet" href="css/estilos.css?v=4">
 </head>
 <body>
 <div class="wrap">
@@ -18,6 +18,8 @@
     <input id="pin" type="password" inputmode="numeric">
     <button class="btn" id="btn-ver">Ver reporte</button>
   </div>
+
+  <div id="aviso-licencia" class="hidden"></div>
 
   <div id="paso-datos" class="hidden">
     <div class="card">
@@ -44,8 +46,8 @@
   </div>
 </div>
 
-<script src="js/config.js?v=3"></script>
-<script src="js/api.js?v=3"></script>
+<script src="js/config.js?v=4"></script>
+<script src="js/api.js?v=4"></script>
 <script>
   const $ = id => document.getElementById(id);
   let pin = '', filas = [];
@@ -53,6 +55,7 @@
   async function cargar() {
     const r = await api('resumen', { pin });
     if (!r.ok) { alert(r.error); return false; }
+    mostrarLicencia(r.licencia, $('aviso-licencia'));
     filas = r.filas;
     const alm = filas.filter(f => f.almorzo).length;
     $('k-ing').textContent = filas.length;
