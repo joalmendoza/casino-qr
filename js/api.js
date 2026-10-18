@@ -31,7 +31,7 @@ const demo = {
     try { localStorage.setItem('casino_demo', JSON.stringify(filas)); } catch {}
   },
 
-  registrar({ nombre, area, firma }) {
+  registrar({ nombre, area, visita, firma }) {
     const filas = this._leer();
     const fecha = hoyISO();
     const existente = filas.find(f => f.fecha === fecha && f.nombre.toLowerCase() === nombre.trim().toLowerCase());
@@ -39,7 +39,7 @@ const demo = {
 
     const fila = {
       id: 'C' + fecha.replace(/-/g, '').slice(2) + '-' + Math.random().toString(36).slice(2, 8).toUpperCase(),
-      fecha, hora: horaActual(), nombre: nombre.trim(), area, firma,
+      fecha, hora: horaActual(), nombre: nombre.trim(), area, visita: visita || '', firma,
       almorzo: false, horaAlmuerzo: ''
     };
     filas.push(fila);
@@ -53,11 +53,11 @@ const demo = {
     const fila = filas.find(f => f.id === id);
     if (!fila) return { ok: false, error: 'QR no registrado' };
     if (fila.fecha !== hoyISO()) return { ok: false, error: 'QR de otro día (' + fila.fecha + ')', nombre: fila.nombre };
-    if (fila.almorzo) return { ok: false, error: 'Ya almorzó a las ' + fila.horaAlmuerzo, nombre: fila.nombre, area: fila.area };
+    if (fila.almorzo) return { ok: false, error: 'Ya almorzó a las ' + fila.horaAlmuerzo, nombre: fila.nombre, area: fila.area, visita: fila.visita };
     fila.almorzo = true;
     fila.horaAlmuerzo = horaActual();
     this._guardar(filas);
-    return { ok: true, nombre: fila.nombre, area: fila.area, horaIngreso: fila.hora, horaAlmuerzo: fila.horaAlmuerzo };
+    return { ok: true, nombre: fila.nombre, area: fila.area, visita: fila.visita, horaIngreso: fila.hora, horaAlmuerzo: fila.horaAlmuerzo };
   },
 
   resumen({ pin }) {

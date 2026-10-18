@@ -4,7 +4,9 @@
 const CONFIG = {
   API_URL: '',
   EMPRESA: 'Mi Empresa',
-  AREAS: ['Producción', 'Mantención', 'Bodega', 'Calidad', 'Administración', 'Prevención de Riesgos', 'Contratista', 'Visita'],
+  AREAS: ['Producción', 'Mantenimiento', 'Control calidad', 'Logística', 'Seguridad', 'HSE', 'Gestión Humana', 'Contabilidad', 'Visitante'],
+  // Si elige esta área, se pide además a qué área viene de visita
+  AREA_VISITANTE: 'Visitante',
   // PIN que pide la pantalla del casino y el reporte. En modo real lo valida el servidor.
   PIN_DEMO: '1234'
 };

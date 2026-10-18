@@ -54,7 +54,7 @@
     tb.innerHTML = '';
     filas.forEach(f => {
       const tr = tb.insertRow();
-      [f.nombre, f.area, f.hora, f.almorzo ? f.horaAlmuerzo : '—'].forEach(v => tr.insertCell().textContent = v);
+      [f.nombre, f.visita ? `${f.area} → ${f.visita}` : f.area, f.hora, f.almorzo ? f.horaAlmuerzo : '—'].forEach(v => tr.insertCell().textContent = v);
     });
     return true;
   }
@@ -69,8 +69,8 @@
   $('btn-refrescar').onclick = cargar;
 
   $('btn-csv').onclick = () => {
-    const cab = 'ID;Fecha;Nombre;Area;HoraIngreso;Almorzo;HoraAlmuerzo';
-    const lineas = filas.map(f => [f.id, f.fecha, f.nombre, f.area, f.hora, f.almorzo ? 'SI' : 'NO', f.horaAlmuerzo]
+    const cab = 'ID;Fecha;Nombre;Area;HoraIngreso;Almorzo;HoraAlmuerzo;AreaVisita';
+    const lineas = filas.map(f => [f.id, f.fecha, f.nombre, f.area, f.hora, f.almorzo ? 'SI' : 'NO', f.horaAlmuerzo, f.visita]
       .map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';'));
     const blob = new Blob(['﻿' + [cab, ...lineas].join('\n')], { type: 'text/csv' });
     const a = document.createElement('a');

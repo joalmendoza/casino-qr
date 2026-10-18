@@ -28,6 +28,11 @@
     <label for="area">Área</label>
     <select id="area"><option value="">Selecciona…</option></select>
 
+    <div id="bloque-visita" class="hidden">
+      <label for="visita">¿A qué área viene de visita?</label>
+      <select id="visita"><option value="">Selecciona…</option></select>
+    </div>
+
     <label>Firma</label>
     <canvas id="firma" class="firma"></canvas>
     <button class="limpiar" id="btn-limpiar" type="button">Borrar firma</button>
@@ -56,6 +61,14 @@
   if (!CONFIG.API_URL) $('aviso-demo').classList.remove('hidden');
 
   CONFIG.AREAS.forEach(a => $('area').add(new Option(a, a)));
+  CONFIG.AREAS.filter(a => a !== CONFIG.AREA_VISITANTE).forEach(a => $('visita').add(new Option(a, a)));
+
+  // Si es visitante, mostramos el menú del área que visita
+  $('area').onchange = () => {
+    const esVisita = $('area').value === CONFIG.AREA_VISITANTE;
+    $('bloque-visita').classList.toggle('hidden', !esVisita);
+    if (!esVisita) $('visita').value = '';
+  };
 
   function reloj() {
     $('fecha').textContent = new Date().toLocaleDateString('es-CL');
@@ -70,6 +83,9 @@
 
   function ajustarCanvas() {
     const r = canvas.getBoundingClientRect();
+    // En el celular el teclado o la barra del navegador disparan "resize";
+    // si el ancho no cambió no tocamos nada para no borrar la firma
+    if (Math.round(r.width) === canvas.width) return;
     canvas.width = r.width;
     canvas.height = r.height;
     ctx.lineWidth = 2.2;
@@ -118,12 +134,14 @@
     const area = $('area').value;
     if (nombre.length < 3) return alert('Escribe tu nombre completo');
     if (!area) return alert('Selecciona tu área');
+    const visita = area === CONFIG.AREA_VISITANTE ? $('visita').value : '';
+    if (area === CONFIG.AREA_VISITANTE && !visita) return alert('Selecciona el área que visitas');
     if (!hayFirma) return alert('Falta la firma');
 
     const btn = $('btn-registrar');
     btn.disabled = true; btn.textContent = 'Registrando…';
     try {
-      const r = await api('registrar', { nombre, area, firma: firmaLiviana() });
+      const r = await api('registrar', { nombre, area, visita, firma: firmaLiviana() });
       if (!r.ok) throw new Error(r.error);
       try { localStorage.setItem('mi_qr', JSON.stringify(r)); } catch {}
       mostrarQR(r);
@@ -139,7 +157,8 @@
     $('paso-qr').classList.remove('hidden');
     $('msg-repetido').classList.toggle('hidden', !r.repetido);
     $('qr-nombre').textContent = r.nombre;
-    $('qr-detalle').textContent = `${r.area} · ingreso ${r.hora} · ${r.fecha}`;
+    const areaTxt = r.visita ? `${r.area} → ${r.visita}` : r.area;
+    $('qr-detalle').textContent = `${areaTxt} · ingreso ${r.hora} · ${r.fecha}`;
     $('qr-codigo').textContent = r.id;
     $('qr').innerHTML = '';
     new QRCode($('qr'), { text: r.id, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
@@ -155,7 +174,8 @@
 
   $('btn-otro').onclick = () => {
     try { localStorage.removeItem('mi_qr'); } catch {}
-    $('nombre').value = ''; $('area').value = '';
+    $('nombre').value = ''; $('area').value = ''; $('visita').value = '';
+    $('bloque-visita').classList.add('hidden');
     ctx.clearRect(0, 0, canvas.width, canvas.height); hayFirma = false;
     $('paso-qr').classList.add('hidden');
     $('paso-form').classList.remove('hidden');

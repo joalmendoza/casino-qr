@@ -2,7 +2,7 @@
  * Backend gratuito del Casino QR (Google Apps Script + Google Sheets + Drive).
  *
  * Hoja "Registros":
- *   A ID | B Fecha | C HoraIngreso | D Nombre | E Area | F Firma (link Drive) | G Almorzo | H HoraAlmuerzo
+ *   A ID | B Fecha | C HoraIngreso | D Nombre | E Area | F Firma (link Drive) | G Almorzo | H HoraAlmuerzo | I AreaVisita
  *
  * Instalación: ver README.md (sección "Paso a paso").
  */
@@ -41,10 +41,12 @@ function doGet() {
 
 // ---------------- Acciones ----------------
 
-function registrar({ nombre, area, firma }) {
+function registrar({ nombre, area, visita, firma }) {
   nombre = String(nombre || '').trim();
   area = String(area || '').trim();
+  visita = String(visita || '').trim();
   if (nombre.length < 3 || !area) return { ok: false, error: 'Faltan datos' };
+  if (area === 'Visitante' && !visita) return { ok: false, error: 'Falta el área que visita' };
   if (!firma || firma.indexOf('data:image/png;base64,') !== 0) return { ok: false, error: 'Falta la firma' };
 
   const hoja = obtenerHoja();
@@ -54,7 +56,7 @@ function registrar({ nombre, area, firma }) {
   const filas = hoja.getDataRange().getDisplayValues();
   for (let i = 1; i < filas.length; i++) {
     if (filas[i][1] === fecha && filas[i][3].toLowerCase() === nombre.toLowerCase()) {
-      return { ok: true, repetido: true, id: filas[i][0], fecha, hora: filas[i][2], nombre: filas[i][3], area: filas[i][4] };
+      return { ok: true, repetido: true, id: filas[i][0], fecha, hora: filas[i][2], nombre: filas[i][3], area: filas[i][4], visita: filas[i][8] };
     }
   }
 
@@ -62,8 +64,8 @@ function registrar({ nombre, area, firma }) {
   const hora = Utilities.formatDate(new Date(), zona(), 'HH:mm');
   const linkFirma = guardarFirma(id, nombre, firma);
 
-  hoja.appendRow([id, fecha, hora, nombre, area, linkFirma, 'NO', '']);
-  return { ok: true, id, fecha, hora, nombre, area };
+  hoja.appendRow([id, fecha, hora, nombre, area, linkFirma, 'NO', '', visita]);
+  return { ok: true, id, fecha, hora, nombre, area, visita };
 }
 
 function validar({ id, pin }) {
@@ -77,11 +79,11 @@ function validar({ id, pin }) {
     if (f[0] !== id) continue;
 
     if (f[1] !== hoy()) return { ok: false, error: 'QR de otro día (' + f[1] + ')', nombre: f[3] };
-    if (f[6] === 'SI') return { ok: false, error: 'Ya almorzó a las ' + f[7], nombre: f[3], area: f[4] };
+    if (f[6] === 'SI') return { ok: false, error: 'Ya almorzó a las ' + f[7], nombre: f[3], area: f[4], visita: f[8] };
 
     const horaAlm = Utilities.formatDate(new Date(), zona(), 'HH:mm');
     hoja.getRange(i + 1, 7, 1, 2).setValues([['SI', horaAlm]]);
-    return { ok: true, nombre: f[3], area: f[4], horaIngreso: f[2], horaAlmuerzo: horaAlm };
+    return { ok: true, nombre: f[3], area: f[4], visita: f[8], horaIngreso: f[2], horaAlmuerzo: horaAlm };
   }
   return { ok: false, error: 'QR no registrado' };
 }
@@ -91,7 +93,7 @@ function resumen({ pin }) {
   const fecha = hoy();
   const filas = obtenerHoja().getDataRange().getDisplayValues().slice(1)
     .filter(f => f[1] === fecha)
-    .map(f => ({ id: f[0], fecha: f[1], hora: f[2], nombre: f[3], area: f[4], almorzo: f[6] === 'SI', horaAlmuerzo: f[7] }));
+    .map(f => ({ id: f[0], fecha: f[1], hora: f[2], nombre: f[3], area: f[4], almorzo: f[6] === 'SI', horaAlmuerzo: f[7], visita: f[8] || '' }));
   return { ok: true, fecha, filas };
 }
 
@@ -102,7 +104,7 @@ function obtenerHoja() {
   let hoja = ss.getSheetByName(HOJA);
   if (!hoja) {
     hoja = ss.insertSheet(HOJA);
-    hoja.appendRow(['ID', 'Fecha', 'HoraIngreso', 'Nombre', 'Area', 'Firma', 'Almorzo', 'HoraAlmuerzo']);
+    hoja.appendRow(['ID', 'Fecha', 'HoraIngreso', 'Nombre', 'Area', 'Firma', 'Almorzo', 'HoraAlmuerzo', 'AreaVisita']);
     hoja.setFrozenRows(1);
     // Fecha y horas como texto, así Sheets no las transforma
     hoja.getRange('B:C').setNumberFormat('@');

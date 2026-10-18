@@ -58,9 +58,12 @@ casino-qr/
 
 **Planilla (hoja `Registros`):**
 
-| ID | Fecha | HoraIngreso | Nombre | Area | Firma | Almorzo | HoraAlmuerzo |
-|----|-------|-------------|--------|------|-------|---------|--------------|
-| C261016-4F2A9B | 2026-10-16 | 07:52 | Juan Pérez | Mantención | (link a Drive) | SI | 13:05 |
+| ID | Fecha | HoraIngreso | Nombre | Area | Firma | Almorzo | HoraAlmuerzo | AreaVisita |
+|----|-------|-------------|--------|------|-------|---------|--------------|------------|
+| C261016-4F2A9B | 2026-10-16 | 07:52 | Juan Pérez | Mantenimiento | (link a Drive) | SI | 13:05 | |
+| C261016-9D31CE | 2026-10-16 | 10:15 | Ana Rojas | Visitante | (link a Drive) | NO | | Control calidad |
+
+Si la persona elige **Visitante**, el formulario le muestra un segundo menú para elegir a qué área viene; eso queda en la columna `AreaVisita`.
 
 Las firmas se guardan como imagen PNG en una carpeta de Drive llamada **Firmas Casino QR**, y en la planilla queda el link.
 
