@@ -83,18 +83,30 @@
 
   function ajustarCanvas() {
     const r = canvas.getBoundingClientRect();
+    if (!r.width) return;   // formulario oculto (se está mostrando el QR)
     // En el celular el teclado o la barra del navegador disparan "resize";
     // si el ancho no cambió no tocamos nada para no borrar la firma
-    if (Math.round(r.width) === canvas.width) return;
-    canvas.width = r.width;
-    canvas.height = r.height;
+    if (Math.round(r.width) === canvas.width && Math.round(r.height) === canvas.height) return;
+
+    // Al girar el celular cambia el ancho: copiamos la firma y la redibujamos al nuevo tamaño
+    let copia = null;
+    if (hayFirma) {
+      copia = document.createElement('canvas');
+      copia.width = canvas.width;
+      copia.height = canvas.height;
+      copia.getContext('2d').drawImage(canvas, 0, 0);
+    }
+    canvas.width = Math.round(r.width);
+    canvas.height = Math.round(r.height);
     ctx.lineWidth = 2.2;
     ctx.lineCap = 'round';
     ctx.strokeStyle = '#111';
-    hayFirma = false;
+    if (copia) ctx.drawImage(copia, 0, 0, canvas.width, canvas.height);
   }
   ajustarCanvas();
   window.addEventListener('resize', ajustarCanvas);
+  // Algunos celulares avisan el giro antes de terminar de acomodar la pantalla
+  window.addEventListener('orientationchange', () => setTimeout(ajustarCanvas, 300));
 
   function punto(e) {
     const r = canvas.getBoundingClientRect();
