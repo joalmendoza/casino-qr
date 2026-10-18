@@ -13,6 +13,7 @@
 const PIN_CASINO = '1234';          // cámbialo antes de publicar
 const HOJA = 'Registros';
 const CARPETA_FIRMAS = 'Firmas Casino QR';
+const HORA_TOPE_DEFECTO = '09:30';   // se cambia desde reporte.html
 
 function doPost(e) {
   let datos;
@@ -22,7 +23,7 @@ function doPost(e) {
     return responder({ ok: false, error: 'Solicitud inválida' });
   }
 
-  const acciones = { registrar, validar, resumen };
+  const acciones = { registrar, validar, resumen, config, guardarTope };
   const fn = acciones[datos.accion];
   if (!fn) return responder({ ok: false, error: 'Acción desconocida' });
 
@@ -66,6 +67,10 @@ function registrar({ nombre, cedula, area, visita, firma, autoriza, version }) {
     }
   }
 
+  // Pasada la hora tope ya no se aceptan registros nuevos (los ya registrados sí recuperan su QR arriba)
+  const ahora = Utilities.formatDate(new Date(), zona(), 'HH:mm');
+  if (ahora > horaTope()) return { ok: false, cerrado: true, error: 'El registro de hoy cerró a las ' + hora12(horaTope()) };
+
   const id = 'C' + fecha.replace(/-/g, '').slice(2) + '-' + Utilities.getUuid().replace(/-/g, '').slice(0, 6).toUpperCase();
   const hora = Utilities.formatDate(new Date(), zona(), 'HH:mm');
   const linkFirma = guardarFirma(id, nombre, firma);
@@ -93,6 +98,18 @@ function validar({ id, pin }) {
     return { ok: true, nombre: f[3], doc: cedulaOculta(f[9]), area: f[4], visita: f[8], horaIngreso: f[2], horaAlmuerzo: horaAlm };
   }
   return { ok: false, error: 'QR no registrado' };
+}
+
+function config() {
+  const ahora = Utilities.formatDate(new Date(), zona(), 'HH:mm');
+  return { ok: true, horaTope: horaTope(), horaServidor: ahora, abierto: ahora <= horaTope() };
+}
+
+function guardarTope({ pin, horaTope }) {
+  if (pin !== PIN_CASINO) return { ok: false, error: 'PIN incorrecto' };
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(horaTope || '')) return { ok: false, error: 'Hora inválida' };
+  PropertiesService.getScriptProperties().setProperty('HORA_TOPE', horaTope);
+  return { ok: true, horaTope };
 }
 
 function resumen({ pin }) {
@@ -144,6 +161,15 @@ function guardarFirma(id, nombre, dataUrl) {
 function cedulaOculta(c) {
   c = String(c || '');
   return c ? '•••' + c.slice(-4) : '';
+}
+
+function horaTope() {
+  return PropertiesService.getScriptProperties().getProperty('HORA_TOPE') || HORA_TOPE_DEFECTO;
+}
+
+function hora12(hhmm) {
+  const p = String(hhmm).split(':').map(Number);
+  return (p[0] % 12 || 12) + ':' + String(p[1]).padStart(2, '0') + (p[0] < 12 ? ' a. m.' : ' p. m.');
 }
 
 function hoy() {

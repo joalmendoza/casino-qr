@@ -15,12 +15,20 @@
 
   <div id="aviso-demo" class="aviso hidden">Modo demo: los datos quedan solo en este equipo.</div>
 
+  <!-- Registro cerrado por hora tope -->
+  <div id="paso-cerrado" class="card centro hidden">
+    <h2 style="margin:0 0 6px;color:var(--mal)">Registro cerrado</h2>
+    <p>El registro de ingreso para el almuerzo de hoy cerró a las <b class="tope-txt"></b></p>
+    <p class="dato">Si ya te registraste, muestra en el casino el QR que guardaste. Si tienes dudas, acércate a portería.</p>
+  </div>
+
   <!-- Paso 1: formulario -->
   <div id="paso-form" class="card">
     <div class="fila dato">
       <div>Fecha: <b id="fecha"></b></div>
       <div>Hora: <b id="hora"></b></div>
     </div>
+    <p class="dato" id="info-tope" style="margin-top:-6px">Registro abierto hasta las <b class="tope-txt">…</b></p>
 
     <label for="nombre">Nombre y apellido</label>
     <input id="nombre" autocomplete="name" placeholder="Ej: Juan Pérez">
@@ -91,9 +99,36 @@
     if (!esVisita) $('visita').value = '';
   };
 
+  // ---- Hora tope de registro ----
+  let horaTope = null;     // 'HH:mm'
+  let desfaseMin = 0;      // diferencia entre la hora del servidor y la del celular
+  const aMin = hhmm => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
+  const ahoraServidor = () => {
+    const d = new Date(Date.now() + desfaseMin * 60000);
+    return d.toTimeString().slice(0, 5);
+  };
+
+  function cerrarRegistro() {
+    if (!$('paso-qr').classList.contains('hidden')) return;   // está viendo su QR, no lo tapamos
+    $('paso-form').classList.add('hidden');
+    $('paso-cerrado').classList.remove('hidden');
+  }
+
+  async function cargarTope() {
+    try {
+      const r = await api('config');
+      if (!r.ok) return;
+      horaTope = r.horaTope;
+      desfaseMin = aMin(r.horaServidor) - aMin(horaActual());
+      document.querySelectorAll('.tope-txt').forEach(el => el.textContent = hora12(horaTope));
+      if (!r.abierto) cerrarRegistro();
+    } catch {}
+  }
+
   function reloj() {
     $('fecha').textContent = new Date().toLocaleDateString('es-CO');
     $('hora').textContent = horaActual();
+    if (horaTope && ahoraServidor() > horaTope) cerrarRegistro();
   }
   reloj(); setInterval(reloj, 15000);
 
@@ -178,6 +213,7 @@
     btn.disabled = true; btn.textContent = 'Registrando…';
     try {
       const r = await api('registrar', { nombre, cedula, area, visita, firma: firmaLiviana(), autoriza: true, version: CONFIG.VERSION_AUTORIZACION });
+      if (r.cerrado) { alert(r.error); cerrarRegistro(); return; }
       if (!r.ok) throw new Error(r.error);
       try { localStorage.setItem('mi_qr', JSON.stringify(r)); } catch {}
       mostrarQR(r);
@@ -216,6 +252,7 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height); hayFirma = false;
     $('paso-qr').classList.add('hidden');
     $('paso-form').classList.remove('hidden');
+    reloj();
   };
 
   // Si ya se registró hoy en este celular, mostrar su QR directo
@@ -223,6 +260,7 @@
     const guardado = JSON.parse(localStorage.getItem('mi_qr') || 'null');
     if (guardado && guardado.fecha === hoyISO()) mostrarQR(guardado);
   } catch {}
+  cargarTope();
 </script>
 </body>
 </html>

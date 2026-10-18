@@ -8,6 +8,8 @@ const CONFIG = {
   AREA_VISITANTE: 'Visitante',
   // PIN que pide la pantalla del casino y el reporte. En modo real lo valida el servidor.
   PIN_DEMO: '1234',
+  // Hora tope de registro si nadie la ha cambiado desde el reporte (formato 24 h)
+  HORA_TOPE_DEFECTO: '09:30',
 
   // Datos del responsable del tratamiento (Ley 1581 de 2012). Completa con los datos reales de la empresa.
   EMPRESA: 'NOMBRE DE LA EMPRESA S.A.S.',

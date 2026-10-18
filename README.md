@@ -32,6 +32,8 @@ App web sencilla para ordenar la entrada al casino. La persona se registra al ll
 3. **Casino:** en la entrada del casino hay un celular o tablet con `casino.html` abierto. Escanea el QR y la pantalla se pone verde con el nombre y el área, o roja si ya almorzó, si el QR es de otro día o si no existe.
 4. **Reporte:** `reporte.html` muestra cuántos ingresaron, cuántos almorzaron y quiénes faltan. También se puede mirar la planilla directamente.
 
+**Hora tope de registro:** por defecto el registro se cierra a las **9:30 a. m.** Después de esa hora la página muestra "Registro cerrado" y el servidor rechaza registros nuevos. La hora se cambia desde `reporte.html` (con el PIN) y aplica de inmediato para todos. Quien ya se registró puede seguir mostrando su QR en el casino.
+
 Si alguien intenta registrarse dos veces el mismo día con la misma cédula, se le devuelve su mismo QR (no se crea otro), aunque escriba el nombre distinto.
 
 ---

@@ -20,6 +20,14 @@
   </div>
 
   <div id="paso-datos" class="hidden">
+    <div class="card">
+      <label for="tope">Hora tope de registro de personas</label>
+      <p class="dato" style="margin:0 0 8px">Después de esta hora ya no se aceptan registros nuevos. Hoy: <b id="tope-actual">…</b></p>
+      <div class="fila">
+        <input id="tope" type="time" step="60">
+        <button class="btn" id="btn-tope" style="flex:0 0 110px;margin-bottom:14px">Guardar</button>
+      </div>
+    </div>
     <div class="kpis">
       <div class="kpi"><b id="k-ing">0</b><span>Ingresaron</span></div>
       <div class="kpi"><b id="k-alm">0</b><span>Almorzaron</span></div>
@@ -59,9 +67,35 @@
     return true;
   }
 
+  async function cargarTope() {
+    const r = await api('config');
+    if (r.ok) {
+      $('tope').value = r.horaTope;
+      $('tope-actual').textContent = hora12(r.horaTope) + (r.abierto ? ' (abierto)' : ' (cerrado)');
+    }
+  }
+
+  $('btn-tope').onclick = async () => {
+    const v = $('tope').value;
+    if (!v) return alert('Elige una hora');
+    const btn = $('btn-tope');
+    btn.disabled = true;
+    try {
+      const r = await api('guardarTope', { pin, horaTope: v });
+      if (!r.ok) return alert(r.error);
+      await cargarTope();
+      alert('Listo. El registro queda abierto hasta las ' + hora12(r.horaTope));
+    } catch (err) {
+      alert('No se pudo guardar: ' + err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
   $('btn-ver').onclick = async () => {
     pin = $('pin').value.trim();
     if (await cargar()) {
+      cargarTope();
       $('paso-pin').classList.add('hidden');
       $('paso-datos').classList.remove('hidden');
     }

@@ -24,6 +24,13 @@ function cedulaOculta(c) {
   return c ? '•••' + c.slice(-4) : '';
 }
 
+// '09:30' -> '9:30 a. m.'
+function hora12(hhmm) {
+  const [h, m] = String(hhmm || '').split(':').map(Number);
+  if (isNaN(h)) return hhmm;
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'a. m.' : 'p. m.'}`;
+}
+
 function horaActual() {
   return new Date().toTimeString().slice(0, 5);
 }
@@ -37,6 +44,22 @@ const demo = {
     try { localStorage.setItem('casino_demo', JSON.stringify(filas)); } catch {}
   },
 
+  _tope() {
+    try { return localStorage.getItem('casino_tope') || CONFIG.HORA_TOPE_DEFECTO; } catch { return CONFIG.HORA_TOPE_DEFECTO; }
+  },
+
+  config() {
+    const tope = this._tope(), ahora = horaActual();
+    return { ok: true, horaTope: tope, horaServidor: ahora, abierto: ahora <= tope };
+  },
+
+  guardarTope({ pin, horaTope }) {
+    if (pin !== CONFIG.PIN_DEMO) return { ok: false, error: 'PIN incorrecto' };
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(horaTope || '')) return { ok: false, error: 'Hora inválida' };
+    try { localStorage.setItem('casino_tope', horaTope); } catch {}
+    return { ok: true, horaTope };
+  },
+
   registrar({ nombre, cedula, area, visita, firma, autoriza, version }) {
     if (!autoriza) return { ok: false, error: 'Falta la autorización de tratamiento de datos' };
     const filas = this._leer();
@@ -47,6 +70,8 @@ const demo = {
       const { firma: _, ...sinFirma } = existente;
       return { ok: true, repetido: true, ...sinFirma };
     }
+    // Pasada la hora tope ya no se aceptan registros nuevos
+    if (horaActual() > this._tope()) return { ok: false, cerrado: true, error: 'El registro de hoy cerró a las ' + hora12(this._tope()) };
 
     const fila = {
       id: 'C' + fecha.replace(/-/g, '').slice(2) + '-' + Math.random().toString(36).slice(2, 8).toUpperCase(),
