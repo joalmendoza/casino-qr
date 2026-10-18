@@ -113,6 +113,8 @@ En demo el registro y el casino tienen que ser el mismo equipo. Para uso real ha
 ### 5. Imprimir el afiche de entrada
 Genera un QR que apunte a `https://TU_USUARIO.github.io/casino-qr/registro.html` (cualquier generador gratis sirve, o el mismo `qrcodejs`) y pégalo en portería.
 
+> Si cambias `js/` o `css/`, sube el número `?v=` en los `<script>` y `<link>` de las páginas para que los celulares no se queden con la versión vieja guardada.
+
 > Ojo: cada vez que cambies `Code.gs` hay que hacer **Implementar → Gestionar implementaciones → Editar → Nueva versión**, si no sigue corriendo la versión anterior.
 
 ---
