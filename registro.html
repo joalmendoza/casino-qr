@@ -25,6 +25,9 @@
     <label for="nombre">Nombre y apellido</label>
     <input id="nombre" autocomplete="name" placeholder="Ej: Juan Pérez">
 
+    <label for="cedula">Cédula o documento de identidad</label>
+    <input id="cedula" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Solo números, sin puntos">
+
     <label for="area">Área</label>
     <select id="area"><option value="">Selecciona…</option></select>
 
@@ -36,6 +39,17 @@
     <label>Firma</label>
     <canvas id="firma" class="firma"></canvas>
     <button class="limpiar" id="btn-limpiar" type="button">Borrar firma</button>
+
+    <div class="autoriza">
+      <p>Tus datos (nombre, cédula, área, fecha y hora de ingreso y de almuerzo, y firma) serán tratados por
+        <b class="r-empresa"></b> solo para controlar el ingreso y el servicio de casino, según la Ley 1581 de 2012.
+        Puedes conocer, actualizar, rectificar o pedir que se eliminen tus datos escribiendo a <span class="r-correo"></span>.
+        <a href="politica.html" target="_blank" rel="noopener">Leer aviso de privacidad completo</a>.</p>
+      <label class="check">
+        <input type="checkbox" id="autoriza">
+        <span>Autorizo de manera previa, expresa e informada el tratamiento de mis datos personales para estos fines.</span>
+      </label>
+    </div>
 
     <button class="btn" id="btn-registrar">Registrar ingreso</button>
   </div>
@@ -60,6 +74,13 @@
   const $ = id => document.getElementById(id);
   if (!CONFIG.API_URL) $('aviso-demo').classList.remove('hidden');
 
+  document.querySelectorAll('.r-empresa').forEach(el => el.textContent = CONFIG.EMPRESA);
+  document.querySelectorAll('.r-correo').forEach(el => el.textContent = CONFIG.CORREO_DATOS);
+
+  // La cédula se guarda solo con números/letras (sin puntos, espacios ni guiones)
+  const limpiarCedula = v => v.replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+  $('cedula').addEventListener('input', () => { $('cedula').value = limpiarCedula($('cedula').value); });
+
   CONFIG.AREAS.forEach(a => $('area').add(new Option(a, a)));
   CONFIG.AREAS.filter(a => a !== CONFIG.AREA_VISITANTE).forEach(a => $('visita').add(new Option(a, a)));
 
@@ -71,7 +92,7 @@
   };
 
   function reloj() {
-    $('fecha').textContent = new Date().toLocaleDateString('es-CL');
+    $('fecha').textContent = new Date().toLocaleDateString('es-CO');
     $('hora').textContent = horaActual();
   }
   reloj(); setInterval(reloj, 15000);
@@ -143,17 +164,20 @@
   // ---- Registrar ----
   $('btn-registrar').onclick = async () => {
     const nombre = $('nombre').value.trim();
+    const cedula = limpiarCedula($('cedula').value);
     const area = $('area').value;
     if (nombre.length < 3) return alert('Escribe tu nombre completo');
+    if (cedula.length < 5) return alert('Escribe tu número de cédula o documento');
     if (!area) return alert('Selecciona tu área');
     const visita = area === CONFIG.AREA_VISITANTE ? $('visita').value : '';
     if (area === CONFIG.AREA_VISITANTE && !visita) return alert('Selecciona el área que visitas');
     if (!hayFirma) return alert('Falta la firma');
+    if (!$('autoriza').checked) return alert('Para registrarte debes autorizar el tratamiento de tus datos personales');
 
     const btn = $('btn-registrar');
     btn.disabled = true; btn.textContent = 'Registrando…';
     try {
-      const r = await api('registrar', { nombre, area, visita, firma: firmaLiviana() });
+      const r = await api('registrar', { nombre, cedula, area, visita, firma: firmaLiviana(), autoriza: true, version: CONFIG.VERSION_AUTORIZACION });
       if (!r.ok) throw new Error(r.error);
       try { localStorage.setItem('mi_qr', JSON.stringify(r)); } catch {}
       mostrarQR(r);
@@ -186,7 +210,8 @@
 
   $('btn-otro').onclick = () => {
     try { localStorage.removeItem('mi_qr'); } catch {}
-    $('nombre').value = ''; $('area').value = ''; $('visita').value = '';
+    $('nombre').value = ''; $('cedula').value = ''; $('area').value = ''; $('visita').value = '';
+    $('autoriza').checked = false;
     $('bloque-visita').classList.add('hidden');
     ctx.clearRect(0, 0, canvas.width, canvas.height); hayFirma = false;
     $('paso-qr').classList.add('hidden');

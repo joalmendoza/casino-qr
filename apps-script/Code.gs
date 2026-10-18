@@ -2,7 +2,10 @@
  * Backend gratuito del Casino QR (Google Apps Script + Google Sheets + Drive).
  *
  * Hoja "Registros":
- *   A ID | B Fecha | C HoraIngreso | D Nombre | E Area | F Firma (link Drive) | G Almorzo | H HoraAlmuerzo | I AreaVisita
+ *   A ID | B Fecha | C HoraIngreso | D Nombre | E Area | F Firma (link Drive) | G Almorzo | H HoraAlmuerzo
+ *   I AreaVisita | J Cedula | K Autorizacion (versión del texto aceptado + fecha y hora)
+ *
+ * Zona horaria: America/Bogota (ver appsscript.json).
  *
  * Instalación: ver README.md (sección "Paso a paso").
  */
@@ -41,31 +44,35 @@ function doGet() {
 
 // ---------------- Acciones ----------------
 
-function registrar({ nombre, area, visita, firma }) {
+function registrar({ nombre, cedula, area, visita, firma, autoriza, version }) {
   nombre = String(nombre || '').trim();
+  cedula = String(cedula || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase();
   area = String(area || '').trim();
   visita = String(visita || '').trim();
+  if (autoriza !== true) return { ok: false, error: 'Falta la autorización de tratamiento de datos' };
   if (nombre.length < 3 || !area) return { ok: false, error: 'Faltan datos' };
+  if (cedula.length < 5) return { ok: false, error: 'Falta la cédula' };
   if (area === 'Visitante' && !visita) return { ok: false, error: 'Falta el área que visita' };
   if (!firma || firma.indexOf('data:image/png;base64,') !== 0) return { ok: false, error: 'Falta la firma' };
 
   const hoja = obtenerHoja();
   const fecha = hoy();
 
-  // Si ya se registró hoy con el mismo nombre, devolvemos su mismo QR
+  // Una cédula = un registro por día: si ya está, devolvemos su mismo QR
   const filas = hoja.getDataRange().getDisplayValues();
   for (let i = 1; i < filas.length; i++) {
-    if (filas[i][1] === fecha && filas[i][3].toLowerCase() === nombre.toLowerCase()) {
-      return { ok: true, repetido: true, id: filas[i][0], fecha, hora: filas[i][2], nombre: filas[i][3], area: filas[i][4], visita: filas[i][8] };
+    if (filas[i][1] === fecha && filas[i][9] === cedula) {
+      return { ok: true, repetido: true, id: filas[i][0], fecha, hora: filas[i][2], nombre: filas[i][3], cedula, area: filas[i][4], visita: filas[i][8] };
     }
   }
 
   const id = 'C' + fecha.replace(/-/g, '').slice(2) + '-' + Utilities.getUuid().replace(/-/g, '').slice(0, 6).toUpperCase();
   const hora = Utilities.formatDate(new Date(), zona(), 'HH:mm');
   const linkFirma = guardarFirma(id, nombre, firma);
+  const autorizacion = 'SI ' + String(version || '').slice(0, 30) + ' ' + fecha + ' ' + hora;
 
-  hoja.appendRow([id, fecha, hora, nombre, area, linkFirma, 'NO', '', visita]);
-  return { ok: true, id, fecha, hora, nombre, area, visita };
+  hoja.appendRow([id, fecha, hora, nombre, area, linkFirma, 'NO', '', visita, cedula, autorizacion]);
+  return { ok: true, id, fecha, hora, nombre, cedula, area, visita };
 }
 
 function validar({ id, pin }) {
@@ -79,11 +86,11 @@ function validar({ id, pin }) {
     if (f[0] !== id) continue;
 
     if (f[1] !== hoy()) return { ok: false, error: 'QR de otro día (' + f[1] + ')', nombre: f[3] };
-    if (f[6] === 'SI') return { ok: false, error: 'Ya almorzó a las ' + f[7], nombre: f[3], area: f[4], visita: f[8] };
+    if (f[6] === 'SI') return { ok: false, error: 'Ya almorzó a las ' + f[7], nombre: f[3], doc: cedulaOculta(f[9]), area: f[4], visita: f[8] };
 
     const horaAlm = Utilities.formatDate(new Date(), zona(), 'HH:mm');
     hoja.getRange(i + 1, 7, 1, 2).setValues([['SI', horaAlm]]);
-    return { ok: true, nombre: f[3], area: f[4], visita: f[8], horaIngreso: f[2], horaAlmuerzo: horaAlm };
+    return { ok: true, nombre: f[3], doc: cedulaOculta(f[9]), area: f[4], visita: f[8], horaIngreso: f[2], horaAlmuerzo: horaAlm };
   }
   return { ok: false, error: 'QR no registrado' };
 }
@@ -93,7 +100,7 @@ function resumen({ pin }) {
   const fecha = hoy();
   const filas = obtenerHoja().getDataRange().getDisplayValues().slice(1)
     .filter(f => f[1] === fecha)
-    .map(f => ({ id: f[0], fecha: f[1], hora: f[2], nombre: f[3], area: f[4], almorzo: f[6] === 'SI', horaAlmuerzo: f[7], visita: f[8] || '' }));
+    .map(f => ({ id: f[0], fecha: f[1], hora: f[2], nombre: f[3], area: f[4], almorzo: f[6] === 'SI', horaAlmuerzo: f[7], visita: f[8] || '', cedula: f[9] || '' }));
   return { ok: true, fecha, filas };
 }
 
@@ -104,11 +111,13 @@ function obtenerHoja() {
   let hoja = ss.getSheetByName(HOJA);
   if (!hoja) {
     hoja = ss.insertSheet(HOJA);
-    hoja.appendRow(['ID', 'Fecha', 'HoraIngreso', 'Nombre', 'Area', 'Firma', 'Almorzo', 'HoraAlmuerzo', 'AreaVisita']);
+    hoja.appendRow(['ID', 'Fecha', 'HoraIngreso', 'Nombre', 'Area', 'Firma', 'Almorzo', 'HoraAlmuerzo', 'AreaVisita', 'Cedula', 'Autorizacion']);
     hoja.setFrozenRows(1);
     // Fecha y horas como texto, así Sheets no las transforma
     hoja.getRange('B:C').setNumberFormat('@');
     hoja.getRange('H:H').setNumberFormat('@');
+    // Cédula como texto para que no le quite ceros ni la vuelva notación científica
+    hoja.getRange('J:J').setNumberFormat('@');
   }
   return hoja;
 }
@@ -129,6 +138,12 @@ function guardarFirma(id, nombre, dataUrl) {
   const bytes = Utilities.base64Decode(dataUrl.split(',')[1]);
   const archivo = carpeta.createFile(Utilities.newBlob(bytes, 'image/png', id + '_' + nombre + '.png'));
   return archivo.getUrl();
+}
+
+// En el casino se muestran solo los últimos 4 dígitos
+function cedulaOculta(c) {
+  c = String(c || '');
+  return c ? '•••' + c.slice(-4) : '';
 }
 
 function hoy() {

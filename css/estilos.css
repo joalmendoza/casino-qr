@@ -95,3 +95,9 @@ th, td { padding: 8px 6px; border-bottom: 1px solid #e5e7eb; text-align: left; }
 .kpi b { display: block; font-size: 26px; }
 .kpi span { font-size: 12px; color: var(--gris); }
 #lector { width: 100%; border-radius: 10px; overflow: hidden; }
+
+.autoriza { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; margin-bottom: 14px; }
+.autoriza p { font-size: 12px; color: var(--gris); line-height: 1.45; margin: 0 0 10px; }
+.autoriza a { color: var(--azul2); }
+.check { display: flex; gap: 10px; align-items: flex-start; font-weight: normal; font-size: 13px; margin: 0; cursor: pointer; }
+.check input { width: 20px; height: 20px; margin: 0; flex: 0 0 20px; }

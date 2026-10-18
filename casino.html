@@ -98,7 +98,7 @@
     box.appendChild(h);
     if (r.nombre) {
       const p = document.createElement('p');
-      p.textContent = r.nombre + (r.area ? ' · ' + r.area : '') + (r.visita ? ' → ' + r.visita : '');
+      p.textContent = r.nombre + (r.doc ? ' (CC ' + r.doc + ')' : '') + (r.area ? ' · ' + r.area : '') + (r.visita ? ' → ' + r.visita : '');
       box.appendChild(p);
     }
     if (r.ok && r.horaIngreso) {

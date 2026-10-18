@@ -32,7 +32,7 @@ App web sencilla para ordenar la entrada al casino. La persona se registra al ll
 3. **Casino:** en la entrada del casino hay un celular o tablet con `casino.html` abierto. Escanea el QR y la pantalla se pone verde con el nombre y el área, o roja si ya almorzó, si el QR es de otro día o si no existe.
 4. **Reporte:** `reporte.html` muestra cuántos ingresaron, cuántos almorzaron y quiénes faltan. También se puede mirar la planilla directamente.
 
-Si alguien intenta registrarse dos veces el mismo día con el mismo nombre, se le devuelve su mismo QR (no se crea otro).
+Si alguien intenta registrarse dos veces el mismo día con la misma cédula, se le devuelve su mismo QR (no se crea otro), aunque escriba el nombre distinto.
 
 ---
 
@@ -44,6 +44,7 @@ casino-qr/
 ├── registro.html       Formulario de ingreso + firma + genera el QR
 ├── casino.html         Lector de QR con la cámara (pide PIN)
 ├── reporte.html        Resumen del día + descarga CSV (pide PIN)
+├── politica.html       Aviso de privacidad (Ley 1581 de 2012)
 ├── css/
 │   └── estilos.css
 ├── js/
@@ -53,15 +54,15 @@ casino-qr/
 │   └── Registro_Casino.xlsx  Planilla Excel para el encargado del casino
 └── apps-script/
     ├── Code.gs         Backend: registrar, validar, resumen
-    └── appsscript.json Zona horaria (America/Santiago) y permisos
+    └── appsscript.json Zona horaria (America/Bogota) y permisos
 ```
 
 **Planilla (hoja `Registros`):**
 
-| ID | Fecha | HoraIngreso | Nombre | Area | Firma | Almorzo | HoraAlmuerzo | AreaVisita |
-|----|-------|-------------|--------|------|-------|---------|--------------|------------|
-| C261016-4F2A9B | 2026-10-16 | 07:52 | Juan Pérez | Mantenimiento | (link a Drive) | SI | 13:05 | |
-| C261016-9D31CE | 2026-10-16 | 10:15 | Ana Rojas | Visitante | (link a Drive) | NO | | Control calidad |
+| ID | Fecha | HoraIngreso | Nombre | Area | Firma | Almorzo | HoraAlmuerzo | AreaVisita | Cedula | Autorizacion |
+|----|-------|-------------|--------|------|-------|---------|--------------|------------|--------|--------------|
+| C261016-4F2A9B | 2026-10-16 | 07:52 | Juan Pérez | Mantenimiento | (link a Drive) | SI | 13:05 | | 1020304050 | SI v1-2026-10 2026-10-16 07:52 |
+| C261016-9D31CE | 2026-10-16 | 10:15 | Ana Rojas | Visitante | (link a Drive) | NO | | Control calidad | 52123456 | SI v1-2026-10 2026-10-16 10:15 |
 
 Si la persona elige **Visitante**, el formulario le muestra un segundo menú para elegir a qué área viene; eso queda en la columna `AreaVisita`.
 
@@ -95,7 +96,7 @@ En demo el registro y el casino tienen que ser el mismo equipo. Para uso real ha
 2. Menú **Extensiones → Apps Script**.
 3. Borra lo que trae y pega el contenido de `apps-script/Code.gs`.
 4. Cambia `PIN_CASINO` por un PIN propio.
-5. En **Configuración del proyecto** (engranaje) marca "Mostrar archivo de manifiesto appsscript.json" y pega el contenido de `apps-script/appsscript.json` (ahí está la zona horaria; cámbiala si no estás en Chile).
+5. En **Configuración del proyecto** (engranaje) marca "Mostrar archivo de manifiesto appsscript.json" y pega el contenido de `apps-script/appsscript.json` (ahí está la zona horaria de Colombia, America/Bogota).
 6. Selecciona la función `instalar` y presiona **Ejecutar**. Te pedirá permisos para la planilla y Drive: acepta.
 
 ### 3. Publicar el Apps Script
@@ -120,11 +121,19 @@ Genera un QR que apunte a `https://TU_USUARIO.github.io/casino-qr/registro.html`
 - Drive: 15 GB. Cada firma pesa unos 5–10 KB.
 
 ## Cosas que se pueden agregar después
-- RUT o número de ficha en vez de solo el nombre (evita duplicados por nombres parecidos).
 - Lista de trabajadores precargada para elegir en vez de escribir.
 - Turnos de almuerzo (bloques horarios por área) para ordenar mejor la fila.
 - Cierre automático: un activador diario en Apps Script que mande el resumen por correo a las 15:00.
 - Que el QR expire a cierta hora.
+
+## Tratamiento de datos personales (Colombia)
+- El registro pide nombre, cédula, área, firma y guarda fecha y hora. Son datos personales, así que aplica la **Ley 1581 de 2012** y el **Decreto 1377 de 2013** (compilado en el Decreto 1074 de 2015).
+- Antes de registrarse, la persona ve un resumen de para qué se usan sus datos y tiene que marcar la casilla de **autorización**. Sin eso no se puede registrar (lo valida también el servidor).
+- En la planilla queda la constancia en la columna `Autorizacion`: versión del texto aceptado, fecha y hora.
+- `politica.html` es el aviso de privacidad completo: responsable, datos, finalidades, derechos y cómo ejercerlos.
+- **Antes de usarla:** completa en `js/config.js` el nombre de la empresa, NIT, dirección, ciudad, correo y teléfono. Lo ideal es que el área jurídica o quien maneje la política de datos de la empresa revise el texto.
+- Si cambias el texto de la autorización, sube `VERSION_AUTORIZACION` en `js/config.js`.
+- En el casino solo se muestran los últimos 4 dígitos de la cédula.
 
 ## Seguridad (lo básico)
 - El PIN del casino y del reporte se valida en el servidor, no queda en la página.

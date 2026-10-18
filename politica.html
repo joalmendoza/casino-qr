@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tratamiento de datos personales - Casino</title>
+  <link rel="stylesheet" href="css/estilos.css">
+  <style>
+    .legal h2 { font-size: 16px; color: var(--azul); margin: 18px 0 6px; }
+    .legal p, .legal li { font-size: 14px; line-height: 1.5; }
+    .legal ul { padding-left: 20px; margin: 6px 0; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Aviso de privacidad</h1>
+    <p>Tratamiento de datos personales – registro de ingreso y casino</p>
+  </div>
+
+  <div class="card legal">
+    <p>En cumplimiento de la Ley 1581 de 2012, el Decreto 1377 de 2013 (compilado en el Decreto 1074 de 2015) y demás normas que los modifiquen o complementen, te informamos cómo tratamos tus datos personales en este registro.</p>
+
+    <h2>1. Responsable del tratamiento</h2>
+    <p><b class="r-empresa"></b>, NIT <span class="r-nit"></span>, con domicilio en <span class="r-direccion"></span>, <span class="r-ciudad"></span>.<br>
+    Correo: <span class="r-correo"></span> · Teléfono: <span class="r-telefono"></span></p>
+
+    <h2>2. Datos que recolectamos</h2>
+    <ul>
+      <li>Nombre completo y número de cédula o documento de identidad.</li>
+      <li>Área a la que perteneces o, si eres visitante, el área que visitas.</li>
+      <li>Fecha y hora de ingreso y fecha y hora de uso del casino.</li>
+      <li>Imagen de tu firma manuscrita.</li>
+    </ul>
+    <p>No recolectamos datos sensibles. El código QR que se genera no contiene tus datos personales: es solo un código aleatorio válido por el día.</p>
+
+    <h2>3. Finalidades</h2>
+    <ul>
+      <li>Registrar y controlar el ingreso de personas a las instalaciones.</li>
+      <li>Organizar y controlar la entrega del servicio de alimentación en el casino (un almuerzo por persona por día).</li>
+      <li>Generar reportes internos de asistencia al casino y conciliar el servicio con el proveedor de alimentación.</li>
+      <li>Atender temas de seguridad y emergencias dentro de las instalaciones (saber quién está en la planta).</li>
+    </ul>
+    <p>Tus datos no se usarán para fines distintos a los aquí descritos ni se venderán o cederán a terceros. Solo podrán acceder a ellos las personas autorizadas de la empresa y, cuando sea necesario, el proveedor del casino para la conciliación del servicio, bajo deber de confidencialidad.</p>
+
+    <h2>4. Tus derechos como titular</h2>
+    <ul>
+      <li>Conocer, actualizar y rectificar tus datos personales.</li>
+      <li>Pedir prueba de la autorización que diste.</li>
+      <li>Ser informado sobre el uso que se les ha dado a tus datos.</li>
+      <li>Presentar quejas ante la Superintendencia de Industria y Comercio (SIC).</li>
+      <li>Revocar la autorización y/o pedir que se eliminen tus datos, cuando no exista un deber legal o contractual de conservarlos.</li>
+      <li>Acceder de forma gratuita a tus datos personales.</li>
+    </ul>
+
+    <h2>5. Cómo ejercer tus derechos</h2>
+    <p>Escribe al correo <span class="r-correo"></span> indicando tu nombre, cédula y tu solicitud. Las consultas se responden en máximo 10 días hábiles y los reclamos en máximo 15 días hábiles, según la Ley 1581 de 2012.</p>
+
+    <h2>6. Seguridad y conservación</h2>
+    <p>Los datos se guardan en una planilla y una carpeta de Google con acceso restringido al personal autorizado. Se conservarán mientras sean necesarios para las finalidades descritas y por el tiempo que exijan las normas aplicables; después se eliminarán.</p>
+
+    <h2>7. Datos opcionales</h2>
+    <p>Es facultativo responder preguntas sobre datos sensibles o de menores de edad; este registro no los solicita.</p>
+
+    <h2>8. Autorización</h2>
+    <p>Al marcar la casilla de autorización en el formulario de registro, declaras que leíste este aviso y autorizas de manera previa, expresa e informada a <b class="r-empresa"></b> para tratar tus datos personales según lo aquí descrito. Queda constancia de la fecha, hora y versión del texto aceptado (<span class="r-version"></span>).</p>
+
+    <p class="dato">Este aviso hace parte de la Política de Tratamiento de Datos Personales de la empresa, que puedes solicitar en el correo indicado.</p>
+  </div>
+
+  <a class="btn sec" href="registro.html">Volver al registro</a>
+</div>
+
+<script src="js/config.js"></script>
+<script>
+  const datos = {
+    'r-empresa': CONFIG.EMPRESA, 'r-nit': CONFIG.NIT, 'r-direccion': CONFIG.DIRECCION,
+    'r-ciudad': CONFIG.CIUDAD, 'r-correo': CONFIG.CORREO_DATOS, 'r-telefono': CONFIG.TELEFONO,
+    'r-version': CONFIG.VERSION_AUTORIZACION
+  };
+  for (const [clase, valor] of Object.entries(datos)) {
+    document.querySelectorAll('.' + clase).forEach(el => el.textContent = valor);
+  }
+</script>
+</body>
+</html>
