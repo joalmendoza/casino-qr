@@ -30,7 +30,10 @@ App web sencilla para ordenar la entrada al casino. La persona se registra al ll
 1. **Ingreso:** en la entrada hay un afiche con un QR fijo. La persona lo escanea con su celular, se abre `registro.html`, pone su nombre, elige su área y firma con el dedo. La fecha y la hora las pone el sistema (la del servidor, no la del celular, así nadie las cambia).
 2. **QR personal:** al registrar, le aparece su QR del día. Queda guardado en el celular (si vuelve a abrir la página le sale de nuevo) y puede descargarlo o sacarle pantallazo.
 3. **Casino:** en la entrada del casino hay un celular o tablet con `casino.html` abierto. Escanea el QR y la pantalla se pone verde con el nombre y el área, o roja si ya almorzó, si el QR es de otro día o si no existe.
-4. **Reporte:** `reporte.html` muestra cuántos ingresaron, cuántos almorzaron y quiénes faltan. También se puede mirar la planilla directamente.
+4. **Panel del encargado:** `reporte.html`, con PIN, tiene 3 pestañas abajo:
+   - **Hoy:** totales, avance del almuerzo, estado del registro, buscador, filtros (pendientes, almorzaron, visitantes) y la lista de personas en vivo; los que van llegando aparecen arriba marcados como NUEVO.
+   - **Reportes:** reporte diario (prender/apagar, hora de envío, enviar ahora o descargar), semanal con gráfica de la semana y los mensuales para descargar.
+   - **Ajustes:** estado de la suscripción, hora tope de registro, actualización automática, correos que reciben los reportes, abrir el lector del casino e imprimir el QR de portería.
 
 **Hora tope de registro:** por defecto el registro se cierra a las **9:30 a. m.** Después de esa hora la página muestra "Registro cerrado" y el servidor rechaza registros nuevos. La hora se cambia desde `reporte.html` (con el PIN) y aplica de inmediato para todos. Quien ya se registró puede seguir mostrando su QR en el casino.
 
@@ -45,7 +48,7 @@ casino-qr/
 ├── index.html          Menú con las 3 pantallas
 ├── registro.html       Formulario de ingreso + firma + genera el QR
 ├── casino.html         Lector de QR con la cámara (pide PIN)
-├── reporte.html        Resumen del día + descarga CSV (pide PIN)
+├── reporte.html        Panel del encargado con 3 pestañas: Hoy, Reportes y Ajustes (pide PIN)
 ├── politica.html       Aviso de privacidad (Ley 1581 de 2012)
 ├── css/
 │   └── estilos.css

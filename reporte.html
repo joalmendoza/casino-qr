@@ -2,192 +2,605 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reporte diario - Casino</title>
-  <link rel="stylesheet" href="css/estilos.css?v=6">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1e3a8a">
+  <title>Reporte - Casino</title>
+  <link rel="stylesheet" href="css/estilos.css?v=7">
+  <style>
+    body { padding: 0; }
+    .app { max-width: 560px; margin: 0 auto; min-height: 100vh; padding-bottom: 76px; }
+    .r-head { background: linear-gradient(135deg, var(--azul), var(--azul2)); color: #fff; padding: 16px 16px 14px; }
+    .r-head .emp { font-size: 12px; opacity: .85; text-transform: uppercase; }
+    .r-head h1 { font-size: 20px; margin: 2px 0 0; }
+    .vivo { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; background: rgba(255,255,255,.18); border-radius: 12px; padding: 3px 9px; margin-top: 8px; }
+    .punto { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.3); }
+    .vivo.pausa .punto { background: #d1d5db; box-shadow: none; }
+    .contenido { padding: 12px; }
+    .vista { display: none; }
+    .vista.activa { display: block; }
+
+    /* Hoy */
+    .kpis { display: flex; gap: 8px; margin: 0; }
+    .kpi { flex: 1; background: #fff; border-radius: 12px; padding: 10px 6px; text-align: center; }
+    .kpi b { display: block; font-size: 26px; }
+    .kpi span { font-size: 11px; color: var(--gris); }
+    .k1 b { color: var(--azul); } .k2 b { color: var(--ok); } .k3 b { color: var(--aviso); }
+    .avance { background: #fff; border-radius: 12px; padding: 10px 12px; margin-top: 8px; }
+    .avance .t { display: flex; justify-content: space-between; font-size: 12px; color: #374151; }
+    .prog { height: 8px; background: #e5e7eb; border-radius: 6px; margin-top: 6px; overflow: hidden; }
+    .prog i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #16a34a, #4ade80); transition: width .4s; }
+    .estado-reg { display: flex; justify-content: space-between; align-items: center; margin: 12px 2px 8px; font-size: 12px; color: #374151; }
+    .chip { display: inline-block; font-size: 11px; border-radius: 10px; padding: 3px 8px; font-weight: bold; white-space: nowrap; }
+    .chip.verde { background: #dcfce7; color: #166534; }
+    .chip.gris { background: #f3f4f6; color: #6b7280; }
+    .chip.rojo { background: #fee2e2; color: #991b1b; }
+    .chip.azul { background: #dbeafe; color: #1e40af; font-size: 9px; }
+    .buscar { margin-bottom: 8px; }
+    .filtros { display: flex; gap: 6px; margin-bottom: 10px; overflow-x: auto; }
+    .filtros button { white-space: nowrap; font-size: 12px; padding: 6px 10px; border-radius: 14px; background: #fff; border: 1px solid #e5e7eb; color: #374151; cursor: pointer; }
+    .filtros button.on { background: var(--azul); color: #fff; border-color: var(--azul); }
+    .per { background: #fff; border-radius: 12px; padding: 9px 10px; display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .per.nuevo { box-shadow: 0 0 0 2px #93c5fd; }
+    .av { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; flex: 0 0 36px; }
+    .per .info { flex: 1; min-width: 0; }
+    .per .n { font-size: 14px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .per .a { font-size: 11px; color: var(--gris); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .per .h { text-align: right; font-size: 11px; color: var(--gris); line-height: 1.6; }
+    .vacio { text-align: center; color: var(--gris); font-size: 14px; padding: 30px 10px; }
+
+    /* Tarjetas de Reportes y Ajustes */
+    .tarjeta { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+    .tarjeta h3 { font-size: 15px; margin: 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .tarjeta .sub { font-size: 12px; color: var(--gris); margin-top: 4px; line-height: 1.4; }
+    .hora-box { display: flex; align-items: center; justify-content: space-between; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
+    .hora-box small { display: block; font-size: 11px; color: var(--gris); }
+    .hora-box b { font-size: 22px; color: var(--azul); }
+    .link { background: none; border: 0; color: var(--azul2); font-weight: bold; font-size: 13px; cursor: pointer; padding: 4px; }
+    .editar { display: flex; gap: 8px; margin-top: 8px; }
+    .editar input { margin: 0; }
+    .editar .btn { flex: 0 0 100px; margin: 0; padding: 10px; font-size: 14px; }
+    .mini { font-size: 11px; color: var(--gris); margin-top: 6px; }
+    .dos { display: flex; gap: 8px; margin-top: 10px; }
+    .dos .btn { flex: 1; margin: 0; padding: 11px; font-size: 14px; }
+    .btn.claro { background: #eef2ff; color: var(--azul); }
+    .btn.peq { padding: 11px; font-size: 14px; margin-top: 10px; }
+    .switch { position: relative; width: 42px; height: 24px; flex: 0 0 42px; }
+    .switch input { opacity: 0; width: 0; height: 0; margin: 0; }
+    .switch span { position: absolute; inset: 0; background: #d1d5db; border-radius: 12px; cursor: pointer; transition: .2s; }
+    .switch span:after { content: ''; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: .2s; }
+    .switch input:checked + span { background: var(--ok); }
+    .switch input:checked + span:after { left: 21px; }
+    .seg { display: flex; background: #f3f4f6; border-radius: 10px; padding: 3px; margin-top: 10px; }
+    .seg button { flex: 1; border: 0; background: none; font-size: 13px; padding: 8px; border-radius: 8px; color: var(--gris); cursor: pointer; }
+    .seg button.on { background: #fff; color: var(--azul); font-weight: bold; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+    .grafica { display: flex; align-items: flex-end; gap: 7px; height: 96px; margin-top: 12px; }
+    .grafica div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 3px; }
+    .grafica i { display: block; width: 100%; min-height: 3px; background: #93c5fd; border-radius: 5px 5px 2px 2px; transition: height .4s; }
+    .grafica i.hoy { background: var(--azul2); }
+    .grafica em { font-style: normal; font-size: 10px; color: var(--gris); }
+    .grafica s { text-decoration: none; font-size: 10px; color: #374151; font-weight: bold; }
+    .item { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
+    .item:last-child { border-bottom: 0; }
+    .item .d { font-size: 11px; color: var(--gris); margin-top: 2px; }
+    a.item { color: inherit; text-decoration: none; }
+    .lic-card { border-radius: 12px; padding: 12px; font-size: 13px; margin-bottom: 10px; }
+    .lic-card b { display: block; font-size: 14px; }
+    .lic-ok { background: #dcfce7; color: #166534; }
+    .lic-av { background: #fef3c7; color: #92400e; }
+    .lic-ma { background: #fee2e2; color: #991b1b; }
+
+    /* Barra de pestañas */
+    .tabs { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e5e7eb; display: flex; padding-bottom: env(safe-area-inset-bottom); z-index: 10; }
+    .tabs-in { display: flex; width: 100%; max-width: 560px; margin: 0 auto; }
+    .tabs button { flex: 1; border: 0; background: none; height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; color: #9ca3af; cursor: pointer; }
+    .tabs button.on { color: var(--azul2); font-weight: bold; }
+    .tabs svg { width: 22px; height: 22px; }
+
+    /* Ventana del QR de portería */
+    .modal { position: fixed; inset: 0; background: rgba(17,24,39,.6); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 20; }
+    .modal .caja { background: #fff; border-radius: 16px; padding: 20px; max-width: 340px; width: 100%; text-align: center; }
+    #qr-porteria { display: inline-block; padding: 10px; }
+    @media print {
+      body * { visibility: hidden; }
+      .modal, .modal * { visibility: visible; }
+      .modal { position: absolute; background: #fff; }
+      .modal .btn { display: none; }
+    }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="top">
-    <h1>Reporte del día</h1>
-    <p>Ingresos y almuerzos registrados hoy</p>
-  </div>
+<div class="app">
+  <header class="r-head">
+    <div class="emp" id="h-empresa"></div>
+    <h1 id="h-titulo">Reporte del casino</h1>
+    <div class="vivo hidden" id="vivo"><span class="punto"></span><span id="vivo-txt">En vivo</span></div>
+  </header>
 
-  <div id="paso-pin" class="card">
-    <label for="pin">PIN</label>
-    <input id="pin" type="password" inputmode="numeric">
-    <button class="btn" id="btn-ver">Ver reporte</button>
-  </div>
+  <div class="contenido">
+    <div id="aviso-demo" class="aviso hidden">Modo demo: los datos quedan solo en este equipo.</div>
+    <div id="aviso-licencia" class="hidden"></div>
 
-  <div id="aviso-licencia" class="hidden"></div>
+    <!-- Ingreso con PIN -->
+    <div id="paso-pin" class="card">
+      <label for="pin">PIN</label>
+      <input id="pin" type="password" inputmode="numeric" autocomplete="off">
+      <button class="btn" id="btn-ver">Entrar</button>
+    </div>
 
-  <div id="paso-datos" class="hidden">
-    <div class="card">
-      <label for="tope">Hora tope de registro de personas</label>
-      <p class="dato" style="margin:0 0 8px">Después de esta hora ya no se aceptan registros nuevos. Hoy: <b id="tope-actual">…</b></p>
-      <div class="fila">
-        <input id="tope" type="time" step="60">
-        <button class="btn" id="btn-tope" style="flex:0 0 110px;margin-bottom:14px">Guardar</button>
+    <!-- ========== HOY ========== -->
+    <section class="vista" id="v-hoy">
+      <div class="kpis">
+        <div class="kpi k1"><b id="k-ing">0</b><span>Ingresaron</span></div>
+        <div class="kpi k2"><b id="k-alm">0</b><span>Almorzaron</span></div>
+        <div class="kpi k3"><b id="k-pen">0</b><span>Pendientes</span></div>
       </div>
-    </div>
-    <div class="kpis">
-      <div class="kpi"><b id="k-ing">0</b><span>Ingresaron</span></div>
-      <div class="kpi"><b id="k-alm">0</b><span>Almorzaron</span></div>
-      <div class="kpi"><b id="k-pen">0</b><span>Pendientes</span></div>
-    </div>
-    <div class="card" style="overflow-x:auto">
-      <table>
-        <thead><tr><th>Nombre</th><th>Cédula</th><th>Área</th><th>Ingreso</th><th>Almuerzo</th></tr></thead>
-        <tbody id="tabla"></tbody>
-      </table>
-    </div>
-    <div class="card">
-      <label for="hora-diario">Reporte diario automático</label>
-      <p class="dato" style="margin:0 0 8px">Todos los días a esta hora se genera el Excel del día<span id="destino-diario"></span>.</p>
-      <div class="fila">
-        <input id="hora-diario" type="time" step="60">
-        <button class="btn" id="btn-hora-diario" style="flex:0 0 110px;margin-bottom:14px">Guardar</button>
+      <div class="avance">
+        <div class="t"><span>Avance del almuerzo</span><b id="pct">0%</b></div>
+        <div class="prog"><i id="barra"></i></div>
       </div>
-      <button class="btn" id="btn-generar">Generar y enviar el de hoy ahora</button>
-      <button class="btn sec" id="btn-csv">Descargar el de hoy aquí (Excel)</button>
-    </div>
-    <div class="card" style="margin-top:12px">
-      <label for="semana">Reporte semanal (lunes a domingo)</label>
-      <div class="fila">
-        <select id="semana">
-          <option value="actual">Esta semana</option>
-          <option value="anterior">Semana pasada</option>
-        </select>
-        <button class="btn" id="btn-semana" style="flex:0 0 120px;margin-bottom:14px">Descargar</button>
+      <div class="estado-reg"><span>Registro de ingreso</span><span class="chip" id="chip-registro">…</span></div>
+      <input class="buscar" id="buscar" type="search" placeholder="🔍  Buscar por nombre o cédula" autocomplete="off">
+      <div class="filtros" id="filtros">
+        <button data-f="todos" class="on">Todos <span>0</span></button>
+        <button data-f="pendientes">Pendientes <span>0</span></button>
+        <button data-f="almorzaron">Almorzaron <span>0</span></button>
+        <button data-f="visitantes">Visitantes <span>0</span></button>
       </div>
-    </div>
-    <button class="btn sec" id="btn-refrescar">Actualizar</button>
-    <label class="check" style="margin-top:12px">
-      <input type="checkbox" id="auto" checked>
-      <span>Actualizar solo cada 30 segundos <span class="dato" id="ultima"></span></span>
-    </label>
+      <div id="lista"></div>
+    </section>
+
+    <!-- ========== REPORTES ========== -->
+    <section class="vista" id="v-reportes">
+      <div class="tarjeta">
+        <h3>📅 Reporte diario
+          <label class="switch" title="Envío automático"><input type="checkbox" id="sw-diario"><span></span></label>
+        </h3>
+        <div class="sub" id="diario-sub">Se genera solo todos los días.</div>
+        <div class="hora-box">
+          <div><small>Hora de envío</small><b id="diario-hora">3:00 p. m.</b></div>
+          <button class="link" data-editar="ed-diario">Cambiar</button>
+        </div>
+        <div class="editar hidden" id="ed-diario">
+          <input type="time" id="in-diario" step="60">
+          <button class="btn" id="btn-g-diario">Guardar</button>
+        </div>
+        <div class="mini" id="diario-proximo"></div>
+        <div class="dos">
+          <button class="btn" id="btn-enviar">Enviar ahora</button>
+          <button class="btn claro" id="btn-dia">Descargar</button>
+        </div>
+      </div>
+
+      <div class="tarjeta">
+        <h3>📊 Reporte semanal</h3>
+        <div class="sub">Lunes a domingo. Llega solo cada lunes.</div>
+        <div class="seg" id="seg-semana">
+          <button data-s="actual" class="on">Esta semana</button>
+          <button data-s="anterior">Semana pasada</button>
+        </div>
+        <div class="grafica" id="grafica"></div>
+        <div class="mini" id="semana-txt"></div>
+        <button class="btn claro peq" id="btn-semana">Descargar Excel de la semana</button>
+      </div>
+
+      <div class="tarjeta">
+        <h3>🗓️ Reportes mensuales</h3>
+        <div id="meses"><div class="mini">Cargando…</div></div>
+      </div>
+    </section>
+
+    <!-- ========== AJUSTES ========== -->
+    <section class="vista" id="v-ajustes">
+      <div class="lic-card lic-ok" id="lic-card"><b>✔ Suscripción activa</b><span id="lic-txt"></span></div>
+
+      <div class="tarjeta">
+        <h3>⏰ Hora tope de registro</h3>
+        <div class="sub">Después de esta hora ya no se aceptan registros nuevos.</div>
+        <div class="hora-box">
+          <div><small>Cierra a las</small><b id="tope-hora">9:30 a. m.</b></div>
+          <button class="link" data-editar="ed-tope">Cambiar</button>
+        </div>
+        <div class="editar hidden" id="ed-tope">
+          <input type="time" id="in-tope" step="60">
+          <button class="btn" id="btn-g-tope">Guardar</button>
+        </div>
+      </div>
+
+      <div class="tarjeta">
+        <h3>🔄 Actualizar solo
+          <label class="switch"><input type="checkbox" id="sw-auto" checked><span></span></label>
+        </h3>
+        <div class="sub">La pestaña Hoy se refresca cada 30 segundos. Ideal para dejarla en una pantalla.</div>
+      </div>
+
+      <div class="tarjeta">
+        <h3>✉️ Reciben los reportes</h3>
+        <div id="correos"></div>
+        <div class="mini">Para cambiar los correos, escríbele a tu proveedor.</div>
+      </div>
+
+      <div class="tarjeta">
+        <h3>🔗 Accesos rápidos</h3>
+        <a class="item" id="ir-casino" href="casino.html"><span>Abrir lector del casino</span><b class="link">›</b></a>
+        <div class="item" id="btn-qr" style="cursor:pointer"><span>QR de la portería (imprimir)</span><b class="link">›</b></div>
+        <div class="item" id="btn-salir" style="cursor:pointer"><span>Salir</span><b class="link">›</b></div>
+      </div>
+    </section>
   </div>
 </div>
 
-<script src="js/config.js?v=6"></script>
-<script src="js/api.js?v=6"></script>
+<nav class="tabs hidden" id="tabs">
+  <div class="tabs-in">
+    <button data-v="hoy" class="on">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.8c1.6.8 2.7 2.6 3 5.2"/></svg>Hoy
+    </button>
+    <button data-v="reportes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reportes
+    </button>
+    <button data-v="ajustes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Ajustes
+    </button>
+  </div>
+</nav>
+
+<!-- QR de la portería para imprimir -->
+<div class="modal hidden" id="modal-qr">
+  <div class="caja">
+    <h3 style="margin:0 0 4px">Registro de ingreso</h3>
+    <p class="dato" style="margin:0 0 6px">Escanea para registrarte y recibir tu QR del almuerzo</p>
+    <div id="qr-porteria"></div>
+    <p class="dato" id="qr-link" style="word-break:break-all;font-size:11px"></p>
+    <button class="btn" id="btn-imprimir">Imprimir</button>
+    <button class="btn sec" id="btn-cerrar-qr">Cerrar</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="js/config.js?v=7"></script>
+<script src="js/api.js?v=7"></script>
 <script>
   const $ = id => document.getElementById(id);
-  let pin = '', filas = [];
+  if (!CONFIG.API_URL) $('aviso-demo').classList.remove('hidden');
+  $('h-empresa').textContent = CONFIG.EMPRESA;
+  $('ir-casino').href = conCliente('casino.html');
 
-  async function cargar() {
-    const r = await api('resumen', { pin });
-    if (!r.ok) { alert(r.error); return false; }
-    mostrarLicencia(r.licencia, $('aviso-licencia'));
-    if (r.horaReporte && document.activeElement !== $('hora-diario')) $('hora-diario').value = r.horaReporte;
-    $('destino-diario').textContent = r.correosReporte && r.correosReporte.length
-      ? ', se guarda y se envía a ' + r.correosReporte.join(', ')
-      : (CONFIG.API_URL ? ' y se guarda en Drive' : '');
-    $('ultima').textContent = '· última: ' + new Date().toTimeString().slice(0, 8);
-    filas = r.filas;
-    const alm = filas.filter(f => f.almorzo).length;
-    $('k-ing').textContent = filas.length;
-    $('k-alm').textContent = alm;
-    $('k-pen').textContent = filas.length - alm;
-    const tb = $('tabla');
-    tb.innerHTML = '';
-    filas.forEach(f => {
-      const tr = tb.insertRow();
-      [f.nombre, f.cedula, f.visita ? `${f.area} → ${f.visita}` : f.area, f.hora, f.almorzo ? f.horaAlmuerzo : '—'].forEach(v => tr.insertCell().textContent = v);
-    });
-    return true;
-  }
+  let pin = '';
+  let filas = [];            // registros de hoy
+  let vistos = null;         // ids ya mostrados, para marcar los NUEVOS
+  let nuevos = new Set();
+  let filtro = 'todos';
+  let ultimaCarga = 0;
+  let datos = {};            // última respuesta del resumen (horas, correos, licencia)
+  let semana = 'actual';
+  let vistaActual = 'hoy';
 
-  async function cargarTope() {
-    const r = await api('config');
-    if (r.ok) {
-      $('tope').value = r.horaTope;
-      $('tope-actual').textContent = hora12(r.horaTope) + (r.abierto ? ' (abierto)' : ' (cerrado)');
-    }
-  }
+  const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  const hoyD = new Date();
+  const TITULOS = { hoy: `Hoy · ${DIAS[hoyD.getDay()]} ${hoyD.getDate()} ${MESES[hoyD.getMonth()].slice(0, 3)}`, reportes: 'Reportes', ajustes: 'Ajustes' };
+  const COLORES = ['#2563eb', '#7c3aed', '#0891b2', '#db2777', '#16a34a', '#ea580c', '#4f46e5', '#0d9488'];
 
-  $('btn-tope').onclick = async () => {
-    const v = $('tope').value;
-    if (!v) return alert('Elige una hora');
-    const btn = $('btn-tope');
+  // ---------- Ingreso ----------
+  $('btn-ver').onclick = async () => {
+    pin = $('pin').value.trim();
+    if (!pin) return;
+    const btn = $('btn-ver');
     btn.disabled = true;
     try {
-      const r = await api('guardarTope', { pin, horaTope: v });
-      if (!r.ok) return alert(r.error);
-      await cargarTope();
-      alert('Listo. El registro queda abierto hasta las ' + hora12(r.horaTope));
-    } catch (err) {
-      alert('No se pudo guardar: ' + err.message);
+      cargarConfig().then(r => { if (r.ok) $('h-empresa').textContent = CONFIG.EMPRESA; }).catch(() => {});
+      if (await cargarHoy()) {
+        $('paso-pin').classList.add('hidden');
+        $('tabs').classList.remove('hidden');
+        try { sessionStorage.setItem('casino_pin', pin); } catch {}
+        irA('hoy');
+      }
     } finally {
       btn.disabled = false;
     }
   };
+  $('pin').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-ver').click(); });
 
-  $('btn-ver').onclick = async () => {
-    pin = $('pin').value.trim();
-    if (await cargar()) {
-      cargarTope();
-      $('paso-pin').classList.add('hidden');
-      $('paso-datos').classList.remove('hidden');
+  // ---------- Navegación ----------
+  function irA(v) {
+    vistaActual = v;
+    document.querySelectorAll('.vista').forEach(s => s.classList.toggle('activa', s.id === 'v-' + v));
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+    $('h-titulo').textContent = TITULOS[v];
+    $('vivo').classList.toggle('hidden', v !== 'hoy');
+    window.scrollTo(0, 0);
+    if (v === 'reportes') { pintarDiario(); cargarSemana(); cargarMeses(); }
+    if (v === 'ajustes') pintarAjustes();
+  }
+  document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => irA(b.dataset.v));
+
+  // ---------- HOY ----------
+  async function cargarHoy() {
+    const r = await api('resumen', { pin });
+    if (!r.ok) { alert(r.error); return false; }
+    datos = r;
+    filas = r.filas.slice().sort((a, b) => b.hora.localeCompare(a.hora));
+    // Lo que no estaba en la carga anterior se marca como NUEVO
+    if (vistos) nuevos = new Set(filas.filter(f => !vistos.has(f.id)).map(f => f.id));
+    vistos = new Set(filas.map(f => f.id));
+    ultimaCarga = Date.now();
+    mostrarLicencia(r.licencia, $('aviso-licencia'));
+    pintarHoy();
+    return true;
+  }
+
+  function pintarHoy() {
+    const alm = filas.filter(f => f.almorzo).length;
+    const vis = filas.filter(f => f.visita || f.area === CONFIG.AREA_VISITANTE).length;
+    const pct = filas.length ? Math.round(alm * 100 / filas.length) : 0;
+    $('k-ing').textContent = filas.length;
+    $('k-alm').textContent = alm;
+    $('k-pen').textContent = filas.length - alm;
+    $('pct').textContent = pct + '%';
+    $('barra').style.width = pct + '%';
+    const chip = $('chip-registro');
+    chip.textContent = (datos.abierto ? 'Abierto hasta ' : 'Cerró a las ') + hora12(datos.horaTope || CONFIG.HORA_TOPE_DEFECTO);
+    chip.className = 'chip ' + (datos.abierto ? 'verde' : 'rojo');
+
+    const cuentas = { todos: filas.length, pendientes: filas.length - alm, almorzaron: alm, visitantes: vis };
+    document.querySelectorAll('#filtros button').forEach(b => b.querySelector('span').textContent = cuentas[b.dataset.f]);
+
+    const q = $('buscar').value.trim().toLowerCase();
+    const lista = filas.filter(f => {
+      if (filtro === 'pendientes' && f.almorzo) return false;
+      if (filtro === 'almorzaron' && !f.almorzo) return false;
+      if (filtro === 'visitantes' && !(f.visita || f.area === CONFIG.AREA_VISITANTE)) return false;
+      return !q || f.nombre.toLowerCase().includes(q) || String(f.cedula || '').includes(q);
+    });
+
+    const cont = $('lista');
+    cont.innerHTML = '';
+    if (!lista.length) {
+      cont.innerHTML = '<div class="vacio">' + (filas.length ? 'Nadie coincide con la búsqueda.' : 'Todavía no se ha registrado nadie hoy.') + '</div>';
+      return;
     }
-  };
-  $('btn-refrescar').onclick = cargar;
+    lista.forEach(f => cont.appendChild(tarjetaPersona(f)));
+  }
 
-  // Actualización automática mientras el reporte está abierto (sirve para tenerlo en pantalla en portería o en el casino)
+  function tarjetaPersona(f) {
+    const el = document.createElement('div');
+    el.className = 'per' + (nuevos.has(f.id) ? ' nuevo' : '');
+    const av = document.createElement('div');
+    av.className = 'av';
+    av.textContent = f.nombre.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+    av.style.background = COLORES[[...f.nombre].reduce((s, c) => s + c.charCodeAt(0), 0) % COLORES.length];
+    const info = document.createElement('div');
+    info.className = 'info';
+    const n = document.createElement('div');
+    n.className = 'n';
+    n.textContent = f.nombre + ' ';
+    if (nuevos.has(f.id)) { const c = document.createElement('span'); c.className = 'chip azul'; c.textContent = 'NUEVO'; n.appendChild(c); }
+    const a = document.createElement('div');
+    a.className = 'a';
+    a.textContent = (f.visita ? f.area + ' → ' + f.visita : f.area) + (f.cedula ? ' · CC ' + cedulaOculta(f.cedula) : '');
+    info.append(n, a);
+    const h = document.createElement('div');
+    h.className = 'h';
+    const chip = document.createElement('span');
+    chip.className = 'chip ' + (f.almorzo ? 'verde' : 'gris');
+    chip.textContent = f.almorzo ? 'Almorzó ' + f.horaAlmuerzo : 'Pendiente';
+    h.append('Ingresó ' + f.hora, document.createElement('br'), chip);
+    el.append(av, info, h);
+    return el;
+  }
+
+  $('buscar').addEventListener('input', pintarHoy);
+  document.querySelectorAll('#filtros button').forEach(b => b.onclick = () => {
+    filtro = b.dataset.f;
+    document.querySelectorAll('#filtros button').forEach(x => x.classList.toggle('on', x === b));
+    pintarHoy();
+  });
+
+  // "En vivo · actualizado hace X s"
   setInterval(() => {
-    if (pin && $('auto').checked && !document.hidden && !$('paso-datos').classList.contains('hidden')) cargar();
+    if (!ultimaCarga) return;
+    const auto = $('sw-auto').checked;
+    const s = Math.round((Date.now() - ultimaCarga) / 1000);
+    $('vivo').classList.toggle('pausa', !auto);
+    $('vivo-txt').textContent = (auto ? 'En vivo · ' : 'Pausado · ') + 'actualizado hace ' + (s < 60 ? s + ' s' : Math.floor(s / 60) + ' min');
+  }, 1000);
+
+  // Actualización automática cada 30 s
+  setInterval(() => {
+    if (pin && $('sw-auto').checked && !document.hidden) cargarHoy().catch(() => {});
   }, 30000);
 
-  // CSV con ; y BOM para que Excel lo abra directo con tildes y columnas bien separadas
+  // ---------- Editar horas (Cambiar) ----------
+  document.querySelectorAll('[data-editar]').forEach(b => b.onclick = () => $(b.dataset.editar).classList.toggle('hidden'));
+
+  // ---------- REPORTES: diario ----------
+  function pintarDiario() {
+    const hora = datos.horaReporte || '15:00';
+    const activo = datos.diarioActivo !== false;
+    $('sw-diario').checked = activo;
+    $('diario-hora').textContent = hora12(hora);
+    $('in-diario').value = hora;
+    const correos = datos.correosReporte || [];
+    $('diario-sub').textContent = activo
+      ? 'Se genera solo todos los días' + (correos.length ? ' y llega a ' + correos.join(', ') : (CONFIG.API_URL ? ' y queda guardado en Drive' : '')) + '.'
+      : 'El envío automático está apagado. Puedes enviarlo o descargarlo cuando quieras.';
+    $('diario-proximo').textContent = activo
+      ? 'Próximo envío: ' + (horaActual() < hora ? 'hoy' : 'mañana') + ' a las ' + hora12(hora)
+      : '';
+  }
+
+  async function guardarDiario(cambios) {
+    const r = await api('guardarHoraReporte', { pin, ...cambios });
+    if (!r.ok) { alert(r.error); return; }
+    datos.horaReporte = r.horaReporte;
+    datos.diarioActivo = r.diarioActivo;
+    pintarDiario();
+  }
+
+  $('sw-diario').onchange = () => guardarDiario({ activo: $('sw-diario').checked });
+  $('btn-g-diario').onclick = async () => {
+    if (!$('in-diario').value) return alert('Elige una hora');
+    await guardarDiario({ hora: $('in-diario').value });
+    $('ed-diario').classList.add('hidden');
+  };
+
+  $('btn-enviar').onclick = async () => {
+    const btn = $('btn-enviar');
+    btn.disabled = true; btn.textContent = 'Enviando…';
+    try {
+      const r = await api('generarDiario', { pin });
+      alert(r.ok ? r.mensaje : r.error);
+    } catch (err) {
+      alert('No se pudo enviar: ' + err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Enviar ahora';
+    }
+  };
+  $('btn-dia').onclick = () => {
+    if (!filas.length) return alert('Todavía no hay registros hoy');
+    descargarCSV(filas, `casino-${hoyISO()}.csv`);
+  };
+
+  // ---------- REPORTES: semanal ----------
+  let filasSemana = [], rangoSemana = {};
+  async function cargarSemana() {
+    const r = await api('resumenSemana', { pin, semana });
+    if (!r.ok) return;
+    filasSemana = r.filas;
+    rangoSemana = { desde: r.desde, hasta: r.hasta };
+    const dias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    const cuenta = dias.map((_, i) => r.filas.filter(f => f.fecha === sumarDias(r.desde, i) && f.almorzo).length);
+    const max = Math.max(1, ...cuenta);
+    const g = $('grafica');
+    g.innerHTML = '';
+    dias.forEach((d, i) => {
+      const col = document.createElement('div');
+      const num = document.createElement('s');
+      num.textContent = cuenta[i] || '';
+      const barra = document.createElement('i');
+      barra.style.height = Math.round(cuenta[i] * 70 / max) + '%';
+      if (sumarDias(r.desde, i) === hoyISO()) barra.className = 'hoy';
+      const et = document.createElement('em');
+      et.textContent = d;
+      col.append(num, barra, et);
+      g.appendChild(col);
+    });
+    const total = cuenta.reduce((a, b) => a + b, 0);
+    const conCasino = cuenta.filter(c => c > 0).length;
+    const rango = r.desde.split('-').reverse().slice(0, 2).join('/') + ' al ' + r.hasta.split('-').reverse().slice(0, 2).join('/');
+    $('semana-txt').textContent = total
+      ? `${total} almuerzo${total === 1 ? '' : 's'} (${rango}) · promedio ${Math.round(total / conCasino)} por día`
+      : `Sin almuerzos registrados (${rango})`;
+  }
+  document.querySelectorAll('#seg-semana button').forEach(b => b.onclick = () => {
+    semana = b.dataset.s;
+    document.querySelectorAll('#seg-semana button').forEach(x => x.classList.toggle('on', x === b));
+    cargarSemana();
+  });
+  $('btn-semana').onclick = () => {
+    if (!filasSemana.length) return alert('No hay registros en esa semana');
+    descargarCSV(filasSemana, `casino-semana-${rangoSemana.desde}-al-${rangoSemana.hasta}.csv`);
+  };
+
+  // ---------- REPORTES: mensual ----------
+  async function cargarMeses() {
+    const r = await api('resumenMeses', { pin });
+    const cont = $('meses');
+    if (!r.ok) { cont.innerHTML = '<div class="mini">No se pudo cargar</div>'; return; }
+    cont.innerHTML = '';
+    r.meses.forEach((m, i) => {
+      const [y, mo] = m.mes.split('-').map(Number);
+      const it = document.createElement('div');
+      it.className = 'item';
+      const izq = document.createElement('div');
+      izq.textContent = MESES[mo - 1].charAt(0).toUpperCase() + MESES[mo - 1].slice(1) + ' ' + y + (i === 0 ? ' (en curso)' : '');
+      const d = document.createElement('div');
+      d.className = 'd';
+      d.textContent = m.almuerzos + ' almuerzo' + (m.almuerzos === 1 ? '' : 's') + ' · ' + m.registros + ' registros';
+      izq.appendChild(d);
+      const b = document.createElement('button');
+      b.className = 'link';
+      b.textContent = 'Descargar';
+      b.disabled = !m.registros;
+      if (!m.registros) b.style.color = '#9ca3af';
+      b.onclick = async () => {
+        const x = await api('resumenMes', { pin, mes: m.mes });
+        if (!x.ok) return alert(x.error);
+        descargarCSV(x.filas, `casino-${m.mes}.csv`);
+      };
+      it.append(izq, b);
+      cont.appendChild(it);
+    });
+  }
+
+  // ---------- AJUSTES ----------
+  function pintarAjustes() {
+    const lic = datos.licencia || {};
+    const card = $('lic-card');
+    const titulo = card.querySelector('b');
+    if (lic.bloqueado) { card.className = 'lic-card lic-ma'; titulo.textContent = '✖ Servicio suspendido'; }
+    else if (lic.estado === 'por_vencer' || lic.estado === 'gracia') { card.className = 'lic-card lic-av'; titulo.textContent = '⚠ Suscripción por renovar'; }
+    else { card.className = 'lic-card lic-ok'; titulo.textContent = '✔ Suscripción activa'; }
+    $('lic-txt').textContent = lic.mensaje || (lic.vence ? 'Al día hasta el ' + lic.vence.split('-').reverse().join('/') : 'Al día');
+
+    const tope = datos.horaTope || CONFIG.HORA_TOPE_DEFECTO;
+    $('tope-hora').textContent = hora12(tope);
+    $('in-tope').value = tope;
+
+    const cont = $('correos');
+    cont.innerHTML = '';
+    const correos = datos.correosReporte || [];
+    if (!correos.length) cont.innerHTML = '<div class="item"><span class="mini" style="margin:0">Todavía no hay correos configurados.</span></div>';
+    correos.forEach(c => { const it = document.createElement('div'); it.className = 'item'; it.textContent = c; cont.appendChild(it); });
+  }
+
+  $('btn-g-tope').onclick = async () => {
+    const v = $('in-tope').value;
+    if (!v) return alert('Elige una hora');
+    const r = await api('guardarTope', { pin, horaTope: v });
+    if (!r.ok) return alert(r.error);
+    datos.horaTope = r.horaTope;
+    datos.abierto = horaActual() <= r.horaTope;
+    $('ed-tope').classList.add('hidden');
+    pintarAjustes();
+    pintarHoy();
+  };
+
+  try { $('sw-auto').checked = localStorage.getItem('casino_auto') !== 'NO'; } catch {}
+  $('sw-auto').onchange = () => { try { localStorage.setItem('casino_auto', $('sw-auto').checked ? 'SI' : 'NO'); } catch {} };
+
+  // QR para imprimir y pegar en portería
+  $('btn-qr').onclick = () => {
+    const url = new URL(conCliente('registro.html'), location.href).href;
+    $('qr-porteria').innerHTML = '';
+    new QRCode($('qr-porteria'), { text: url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+    $('qr-link').textContent = url;
+    $('modal-qr').classList.remove('hidden');
+  };
+  $('btn-cerrar-qr').onclick = () => $('modal-qr').classList.add('hidden');
+  $('btn-imprimir').onclick = () => window.print();
+
+  $('btn-salir').onclick = () => {
+    try { sessionStorage.removeItem('casino_pin'); } catch {}
+    location.reload();
+  };
+
+  // ---------- Descarga CSV (abre directo en Excel) ----------
   function descargarCSV(lista, nombreArchivo) {
     const cab = 'ID;Fecha;Nombre;Area;HoraIngreso;Almorzo;HoraAlmuerzo;AreaVisita;Cedula';
     const lineas = lista.map(f => [f.id, f.fecha, f.nombre, f.area, f.hora, f.almorzo ? 'SI' : 'NO', f.horaAlmuerzo, f.visita, f.cedula]
       .map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';'));
-    const blob = new Blob(['\ufeff' + [cab, ...lineas].join('\n')], { type: 'text/csv' });
+    const blob = new Blob(['﻿' + [cab, ...lineas].join('\n')], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = nombreArchivo;
     a.click();
   }
 
-  $('btn-hora-diario').onclick = async () => {
-    const v = $('hora-diario').value;
-    if (!v) return alert('Elige una hora');
-    const r = await api('guardarHoraReporte', { pin, hora: v });
-    alert(r.ok ? 'Listo. El reporte diario se generará todos los días a las ' + hora12(r.horaReporte) : r.error);
-  };
-
-  $('btn-generar').onclick = async () => {
-    const btn = $('btn-generar');
-    btn.disabled = true;
-    btn.textContent = 'Generando…';
-    try {
-      const r = await api('generarDiario', { pin });
-      alert(r.ok ? r.mensaje : r.error);
-    } catch (err) {
-      alert('No se pudo generar: ' + err.message);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Generar y enviar el de hoy ahora';
-    }
-  };
-
-  $('btn-csv').onclick = () => descargarCSV(filas, `casino-${hoyISO()}.csv`);
-
-  $('btn-semana').onclick = async () => {
-    const btn = $('btn-semana');
-    btn.disabled = true;
-    try {
-      const r = await api('resumenSemana', { pin, semana: $('semana').value });
-      if (!r.ok) return alert(r.error);
-      if (!r.filas.length) return alert('No hay registros en esa semana');
-      descargarCSV(r.filas, `casino-semana-${r.desde}-al-${r.hasta}.csv`);
-    } catch (err) {
-      alert('No se pudo descargar: ' + err.message);
-    } finally {
-      btn.disabled = false;
-    }
-  };
+  // Si ya entró en esta pestaña del navegador, no le pedimos el PIN otra vez
+  try {
+    const guardado = sessionStorage.getItem('casino_pin');
+    if (guardado) { $('pin').value = guardado; $('btn-ver').click(); }
+  } catch {}
 </script>
 </body>
 </html>

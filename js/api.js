@@ -162,11 +162,44 @@ const demo = {
     return { ok: true, nombre: fila.nombre, doc: cedulaOculta(fila.cedula), area: fila.area, visita: fila.visita, horaIngreso: fila.hora, horaAlmuerzo: fila.horaAlmuerzo };
   },
 
-  guardarHoraReporte({ pin, hora }) {
+  _diario() {
+    let hora = '15:00', activo = true;
+    try {
+      hora = localStorage.getItem('casino_hora_reporte') || hora;
+      activo = localStorage.getItem('casino_diario_activo') !== 'NO';
+    } catch {}
+    return { hora, activo };
+  },
+
+  guardarHoraReporte({ pin, hora, activo }) {
     if (pin !== CONFIG.PIN_DEMO) return { ok: false, error: 'PIN incorrecto' };
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hora || '')) return { ok: false, error: 'Hora inválida' };
-    try { localStorage.setItem('casino_hora_reporte', hora); } catch {}
-    return { ok: true, horaReporte: hora };
+    if (hora && !/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)) return { ok: false, error: 'Hora inválida' };
+    try {
+      if (hora) localStorage.setItem('casino_hora_reporte', hora);
+      if (typeof activo === 'boolean') localStorage.setItem('casino_diario_activo', activo ? 'SI' : 'NO');
+    } catch {}
+    const d = this._diario();
+    return { ok: true, horaReporte: d.hora, diarioActivo: d.activo };
+  },
+
+  resumenMeses({ pin }) {
+    if (pin !== CONFIG.PIN_DEMO) return { ok: false, error: 'PIN incorrecto' };
+    const d = new Date();
+    const meses = [0, 1, 2].map(k => {
+      const x = new Date(d.getFullYear(), d.getMonth() - k, 1);
+      return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}`;
+    });
+    const filas = this._leer();
+    return { ok: true, meses: meses.map(m => {
+      const del = filas.filter(f => f.fecha.slice(0, 7) === m);
+      return { mes: m, registros: del.length, almuerzos: del.filter(f => f.almorzo).length };
+    }) };
+  },
+
+  resumenMes({ pin, mes }) {
+    if (pin !== CONFIG.PIN_DEMO) return { ok: false, error: 'PIN incorrecto' };
+    const filas = this._leer().filter(f => f.fecha.slice(0, 7) === mes).map(({ firma, ...resto }) => resto);
+    return { ok: true, mes, filas };
   },
 
   generarDiario({ pin }) {
@@ -188,8 +221,8 @@ const demo = {
     if (pin !== CONFIG.PIN_DEMO) return { ok: false, error: 'PIN incorrecto' };
     const filas = this._leer().filter(f => f.fecha === hoyISO())
       .map(({ firma, ...resto }) => resto);
-    let horaReporte = '15:00';
-    try { horaReporte = localStorage.getItem('casino_hora_reporte') || horaReporte; } catch {}
-    return { ok: true, fecha: hoyISO(), filas, horaReporte, correosReporte: [] };
+    const d = this._diario(), tope = this._tope();
+    return { ok: true, fecha: hoyISO(), filas, horaReporte: d.hora, diarioActivo: d.activo, correosReporte: [],
+      horaTope: tope, abierto: horaActual() <= tope };
   }
 };

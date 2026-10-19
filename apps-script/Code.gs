@@ -12,6 +12,7 @@
  *   CorreoReportes: a quién se le manda el Excel semanal y mensual (varios separados por coma)
  *   CorreosLectura: quiénes pueden ver la planilla en vivo, solo lectura (varios separados por coma)
  *   HoraReporte: hora en que se genera y envía el Excel del día (el cliente la cambia desde el reporte). Vacío = 15:00
+ *   DiarioActivo: SI / NO. Si es NO no se genera el Excel diario automático (el cliente lo prende o apaga desde el reporte)
  *
  * Planilla de cada cliente, hoja "Registros":
  *   A ID | B Fecha | C HoraIngreso | D Nombre | E Area | F Firma (link Drive) | G Almorzo | H HoraAlmuerzo
@@ -34,7 +35,7 @@ const HOJA_LIC = 'Licencias';
 const HOJA_REG = 'Registros';
 const CARPETA_RAIZ = 'Casino QR - Clientes';
 const COLS = ['Codigo', 'Cliente', 'Estado', 'Vence', 'PIN', 'HoraTope', 'Areas', 'RazonSocial', 'NIT',
-  'Direccion', 'Ciudad', 'CorreoDatos', 'Telefono', 'HojaDatos', 'Notas', 'CorreoReportes', 'CorreosLectura', 'HoraReporte'];
+  'Direccion', 'Ciudad', 'CorreoDatos', 'Telefono', 'HojaDatos', 'Notas', 'CorreoReportes', 'CorreosLectura', 'HoraReporte', 'DiarioActivo'];
 
 // ================= Entrada web =================
 
@@ -46,7 +47,7 @@ function doPost(e) {
     return responder({ ok: false, error: 'Solicitud inválida' });
   }
 
-  const acciones = { config, registrar, validar, resumen, resumenSemana, guardarTope, guardarHoraReporte, generarDiario };
+  const acciones = { config, registrar, validar, resumen, resumenSemana, resumenMeses, resumenMes, guardarTope, guardarHoraReporte, generarDiario };
   const fn = acciones[datos.accion];
   if (!fn) return responder({ ok: false, error: 'Acción desconocida' });
 
@@ -155,16 +156,46 @@ function resumen({ pin }, lic) {
   const filas = hojaRegistros(lic).getDataRange().getDisplayValues().slice(1)
     .filter(f => f[1] === fecha)
     .map(f => ({ id: f[0], fecha: f[1], hora: f[2], nombre: f[3], area: f[4], almorzo: f[6] === 'SI', horaAlmuerzo: f[7], visita: f[8] || '', cedula: f[9] || '' }));
-  return { ok: true, fecha, filas, horaReporte: lic.HoraReporte, correosReporte: listaCorreos(lic.CorreoReportes) };
+  const tope = lic.HoraTope || HORA_TOPE_DEFECTO;
+  return { ok: true, fecha, filas, horaReporte: lic.HoraReporte, diarioActivo: lic.DiarioActivo,
+    correosReporte: listaCorreos(lic.CorreoReportes), horaTope: tope, abierto: horaAhora() <= tope };
 }
 
-function guardarHoraReporte({ pin, hora }, lic) {
+// Totales de los últimos 3 meses (el actual y los 2 anteriores) para la pestaña Reportes
+function resumenMeses({ pin }, lic) {
   if (pin !== String(lic.PIN)) return { ok: false, error: 'PIN incorrecto' };
-  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hora || '')) return { ok: false, error: 'Hora inválida' };
+  const d = new Date();
+  const meses = [0, 1, 2].map(k => Utilities.formatDate(new Date(d.getFullYear(), d.getMonth() - k, 1), zona(), 'yyyy-MM'));
+  const tot = {};
+  meses.forEach(m => tot[m] = { mes: m, registros: 0, almuerzos: 0 });
+  hojaRegistros(lic).getDataRange().getDisplayValues().slice(1).forEach(f => {
+    const t = tot[f[1].slice(0, 7)];
+    if (!t) return;
+    t.registros++;
+    if (f[6] === 'SI') t.almuerzos++;
+  });
+  return { ok: true, meses: meses.map(m => tot[m]) };
+}
+
+// Registros de un mes 'aaaa-mm' para descargar desde el reporte
+function resumenMes({ pin, mes }, lic) {
+  if (pin !== String(lic.PIN)) return { ok: false, error: 'PIN incorrecto' };
+  if (!/^\d{4}-\d{2}$/.test(mes || '')) return { ok: false, error: 'Mes inválido' };
+  const filas = registrosDe(lic, f => f[1].slice(0, 7) === mes)
+    .map(f => ({ id: f[0], fecha: f[1], hora: f[2], nombre: f[3], area: f[4], almorzo: f[6] === 'SI', horaAlmuerzo: f[7], visita: f[8] || '', cedula: f[9] || '' }));
+  return { ok: true, mes, filas };
+}
+
+// Cambia la hora del Excel diario y/o lo prende o apaga (activo: true / false)
+function guardarHoraReporte({ pin, hora, activo }, lic) {
+  if (pin !== String(lic.PIN)) return { ok: false, error: 'PIN incorrecto' };
+  if (typeof activo === 'boolean') escribirLicencia(lic, 'DiarioActivo', activo ? 'SI' : 'NO');
+  if (!hora) return { ok: true, horaReporte: lic.HoraReporte, diarioActivo: typeof activo === 'boolean' ? activo : lic.DiarioActivo };
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)) return { ok: false, error: 'Hora inválida' };
   escribirLicencia(lic, 'HoraReporte', hora);
   // Si se cambia la hora, que el de hoy pueda volver a salir a la hora nueva
   PropertiesService.getScriptProperties().deleteProperty('DIARIO_' + lic.Codigo);
-  return { ok: true, horaReporte: hora };
+  return { ok: true, horaReporte: hora, diarioActivo: typeof activo === 'boolean' ? activo : lic.DiarioActivo };
 }
 
 // Botón "Generar ahora" del reporte: arma el Excel del día, lo guarda en Drive y lo envía
@@ -229,6 +260,7 @@ function buscarLicencia(codigo) {
     cab.forEach((c, j) => lic[c] = valores[i][j]);
     lic.HoraTope = textoHora(lic.HoraTope);
     lic.HoraReporte = textoHora(lic.HoraReporte) || HORA_DIARIO_DEFECTO;
+    lic.DiarioActivo = String(lic.DiarioActivo || 'SI').trim().toUpperCase() !== 'NO';
     return lic;
   }
   return null;
@@ -251,7 +283,7 @@ function estadoLicencia(lic) {
   const dias = Math.round((new Date(venceTxt + 'T00:00:00') - new Date(hoy() + 'T00:00:00')) / 86400000);
   const venceLindo = Utilities.formatDate(vence, zona(), 'dd/MM/yyyy');
 
-  if (dias > AVISO_DIAS) return { estado: 'activo', bloqueado: false, vence: venceTxt, dias };
+  if (dias > AVISO_DIAS) return { estado: 'activo', bloqueado: false, vence: venceTxt, dias, venceLindo };
   if (dias >= 0) return { estado: 'por_vencer', bloqueado: false, vence: venceTxt, dias,
     mensaje: 'Tu suscripción vence el ' + venceLindo + (dias === 0 ? ' (hoy)' : ' (en ' + dias + ' día' + (dias === 1 ? '' : 's') + ')') + '. Renueva para no perder el servicio.' };
   if (-dias <= GRACIA_DIAS) return { estado: 'gracia', bloqueado: false, vence: venceTxt, dias,
@@ -453,7 +485,7 @@ function reportesDiarios() {
   const fecha = hoy(), ahora = horaAhora();
   const props = PropertiesService.getScriptProperties();
   clientesParaReporte().forEach(lic => {
-    if (ahora < lic.HoraReporte || props.getProperty('DIARIO_' + lic.Codigo) === fecha) return;
+    if (!lic.DiarioActivo || ahora < lic.HoraReporte || props.getProperty('DIARIO_' + lic.Codigo) === fecha) return;
     try {
       Logger.log(reporteDiarioCliente(lic, fecha));
       props.setProperty('DIARIO_' + lic.Codigo, fecha);
