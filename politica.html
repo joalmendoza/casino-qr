@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; media-src 'self' blob: mediastream:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
   <title>Tratamiento de datos personales - Casino</title>
-  <link rel="stylesheet" href="css/estilos.css?v=7">
+  <link rel="stylesheet" href="css/estilos.css?v=8">
   <style>
     .legal h2 { font-size: 16px; color: var(--azul); margin: 18px 0 6px; }
     .legal p, .legal li { font-size: 14px; line-height: 1.5; }
@@ -54,10 +57,11 @@
     </ul>
 
     <h2>5. Cómo ejercer tus derechos</h2>
-    <p>Escribe al correo <span class="r-correo"></span> indicando tu nombre, cédula y tu solicitud. Las consultas se responden en máximo 10 días hábiles y los reclamos en máximo 15 días hábiles, según la Ley 1581 de 2012.</p>
+    <p>Escribe al correo <span class="r-correo"></span> indicando tu nombre, cédula y tu solicitud. Las consultas se responden en máximo 10 días hábiles (prorrogables hasta 5 días hábiles más, avisándote el motivo) y los reclamos en máximo 15 días hábiles (prorrogables hasta 8 días hábiles más), según los artículos 14 y 15 de la Ley 1581 de 2012. Antes de acudir a la Superintendencia de Industria y Comercio debes haber presentado tu consulta o reclamo ante nosotros.</p>
 
     <h2>6. Seguridad y conservación</h2>
-    <p>Los datos se guardan en una planilla y una carpeta de Google con acceso restringido al personal autorizado. Se conservarán mientras sean necesarios para las finalidades descritas y por el tiempo que exijan las normas aplicables; después se eliminarán.</p>
+    <p>Los datos se guardan en servicios de nube de Google (Google Drive y Google Sheets), cuyos servidores pueden estar fuera de Colombia, con acceso restringido al personal autorizado y a la empresa que presta el servicio tecnológico, que actúa como encargada del tratamiento bajo contrato y deber de confidencialidad. La comunicación viaja cifrada (HTTPS), el panel de consulta está protegido con PIN y en el casino solo se muestran los últimos 4 dígitos de la cédula.</p>
+    <p>Los registros y las firmas se conservan por un máximo de 12 meses, salvo que una norma exija guardarlos más tiempo; después se eliminan automáticamente.</p>
 
     <h2>7. Datos opcionales</h2>
     <p>Es facultativo responder preguntas sobre datos sensibles o de menores de edad; este registro no los solicita.</p>
@@ -71,8 +75,8 @@
   <a class="btn sec" href="registro.html">Volver al registro</a>
 </div>
 
-<script src="js/config.js?v=7"></script>
-<script src="js/api.js?v=7"></script>
+<script src="js/config.js?v=8"></script>
+<script src="js/api.js?v=8"></script>
 <script>
   function pintar() {
   const datos = {

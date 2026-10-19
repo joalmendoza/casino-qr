@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; media-src 'self' blob: mediastream:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
   <title>Registro de ingreso - Casino</title>
-  <link rel="stylesheet" href="css/estilos.css?v=7">
+  <link rel="stylesheet" href="css/estilos.css?v=8">
 </head>
 <body>
 <div class="wrap">
@@ -83,8 +86,8 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="js/config.js?v=7"></script>
-<script src="js/api.js?v=7"></script>
+<script src="js/config.js?v=8"></script>
+<script src="js/api.js?v=8"></script>
 <script>
   const $ = id => document.getElementById(id);
   if (!CONFIG.API_URL) $('aviso-demo').classList.remove('hidden');
@@ -241,7 +244,9 @@
       if (r.suspendido) { suspender(); return; }
       if (r.cerrado) { alert(r.error); cerrarRegistro(); return; }
       if (!r.ok) throw new Error(r.error);
-      try { localStorage.setItem('mi_qr', JSON.stringify(r)); } catch {}
+      // En el celular solo queda lo necesario para volver a mostrar el QR (sin la cédula)
+      const { cedula: _ced, licencia: _lic, ...paraGuardar } = r;
+      try { localStorage.setItem('mi_qr', JSON.stringify(paraGuardar)); } catch {}
       mostrarQR(r);
     } catch (err) {
       alert('No se pudo registrar: ' + err.message);

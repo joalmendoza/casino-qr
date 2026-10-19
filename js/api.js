@@ -85,6 +85,14 @@ function sumarDias(fecha, n) {
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
 }
 
+// Mismo primer nombre y al menos 2 palabras en común, sin tildes ni mayúsculas (igual que el servidor)
+function mismoNombre(a, b) {
+  const t = x => String(x).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/\s+/).filter(Boolean);
+  const x = t(a), y = t(b);
+  if (!x.length || !y.length || x[0] !== y[0]) return false;
+  return y.filter(p => x.includes(p)).length >= Math.min(2, x.length, y.length);
+}
+
 function horaActual() {
   return new Date().toTimeString().slice(0, 5);
 }
@@ -131,6 +139,9 @@ const demo = {
     // Una cédula = un registro por día, aunque escriba el nombre distinto
     const existente = filas.find(f => f.fecha === fecha && f.cedula === cedula);
     if (existente) {
+      if (!mismoNombre(existente.nombre, nombre)) {
+        return { ok: false, error: 'Esta cédula ya tiene un registro hoy. Si eres tú, escribe tu nombre como la primera vez o acércate a portería.' };
+      }
       const { firma: _, ...sinFirma } = existente;
       return { ok: true, repetido: true, ...sinFirma };
     }

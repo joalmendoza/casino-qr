@@ -50,6 +50,7 @@ casino-qr/
 ├── casino.html         Lector de QR con la cámara (pide PIN)
 ├── reporte.html        Panel del encargado con 3 pestañas: Hoy, Reportes y Ajustes (pide PIN)
 ├── politica.html       Aviso de privacidad (Ley 1581 de 2012)
+├── SEGURIDAD.md        Revisión de seguridad y cumplimiento legal
 ├── css/
 │   └── estilos.css
 ├── js/
@@ -207,6 +208,9 @@ Para ver cómo se ve sin conectar nada, en modo demo usa estos links:
 - En el casino solo se muestran los últimos 4 dígitos de la cédula.
 
 ## Seguridad (lo básico)
+
+La revisión completa de seguridad, ataques de saturación y cumplimiento de la Ley 1581 está en **[SEGURIDAD.md](SEGURIDAD.md)**.
+
 - El PIN del casino y del reporte se valida en el servidor, no queda en la página.
 - El QR solo trae un código aleatorio, no datos personales.
 - La planilla y las firmas quedan en tu Drive, solo tú (y a quien compartas) las ve.

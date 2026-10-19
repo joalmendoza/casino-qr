@@ -29,6 +29,16 @@ const GRACIA_DIAS = 3;     // días después del vencimiento en que todavía fun
 const HORA_REPORTE = 6;    // hora (0-23) en que se generan los Excel: el semanal cada lunes y el mensual el día 1
 const HORA_DIARIO_DEFECTO = '15:00';   // hora del Excel diario si el cliente no ha elegido otra
 
+// ---- Seguridad ----
+const MAX_INTENTOS_PIN = 5;          // intentos fallidos de PIN antes de bloquear
+const BLOQUEO_PIN_MIN = 15;          // minutos de bloqueo tras fallar el PIN esas veces
+const MAX_SOLICITUDES_MIN = 120;     // solicitudes por minuto por cliente (frena abusos y ataques de saturación)
+const MAX_REGISTROS_MIN = 40;        // registros nuevos por minuto por cliente
+const MAX_TAMANO_SOLICITUD = 200000; // bytes; una firma normal pesa 5-20 KB
+const RETENCION_MESES = 12;          // los registros y firmas más viejos que esto se borran solos (0 = nunca)
+const ACCIONES_CON_PIN = ['validar', 'resumen', 'resumenSemana', 'resumenMeses', 'resumenMes', 'guardarTope', 'guardarHoraReporte', 'generarDiario'];
+const ACCIONES_QUE_ESCRIBEN = ['registrar', 'validar', 'guardarTope', 'guardarHoraReporte', 'generarDiario'];
+
 const HORA_TOPE_DEFECTO = '09:30';
 const AREAS_DEFECTO = 'Producción, Mantenimiento, Control calidad, Logística, Seguridad, HSE, Gestión Humana, Contabilidad, Visitante';
 const HOJA_LIC = 'Licencias';
@@ -40,9 +50,12 @@ const COLS = ['Codigo', 'Cliente', 'Estado', 'Vence', 'PIN', 'HoraTope', 'Areas'
 // ================= Entrada web =================
 
 function doPost(e) {
+  // Solicitudes vacías o demasiado grandes se rechazan antes de hacer cualquier trabajo
+  const cuerpo = e && e.postData ? e.postData.contents : '';
+  if (!cuerpo || cuerpo.length > MAX_TAMANO_SOLICITUD) return responder({ ok: false, error: 'Solicitud inválida' });
   let datos;
   try {
-    datos = JSON.parse(e.postData.contents);
+    datos = JSON.parse(cuerpo);
   } catch (err) {
     return responder({ ok: false, error: 'Solicitud inválida' });
   }
@@ -51,21 +64,84 @@ function doPost(e) {
   const fn = acciones[datos.accion];
   if (!fn) return responder({ ok: false, error: 'Acción desconocida' });
 
-  // Evita que dos lecturas simultáneas del mismo QR pasen las dos
+  const codigo = String(datos.cliente || '').trim().toUpperCase();
+  if (!/^[A-Z0-9-]{2,20}$/.test(codigo)) return responder({ ok: false, error: 'Código de cliente no válido. Revisa el link que te entregaron.' });
+
+  // Límite de solicitudes por minuto por cliente (sin tocar la planilla, para aguantar ataques de saturación)
+  if (superaLimite('sol_' + codigo, MAX_SOLICITUDES_MIN)) return responder({ ok: false, error: 'Demasiadas solicitudes. Intenta de nuevo en un minuto.' });
+  if (datos.accion === 'registrar' && superaLimite('reg_' + codigo, MAX_REGISTROS_MIN)) {
+    return responder({ ok: false, error: 'Hay muchos registros al mismo tiempo. Intenta de nuevo en un minuto.' });
+  }
+
+  // Solo las acciones que escriben esperan turno (evita que dos lecturas del mismo QR pasen las dos)
+  const escribe = ACCIONES_QUE_ESCRIBEN.indexOf(datos.accion) >= 0;
   const lock = LockService.getScriptLock();
-  lock.waitLock(10000);
+  if (escribe && !lock.tryLock(8000)) return responder({ ok: false, error: 'El sistema está ocupado. Intenta de nuevo en unos segundos.' });
   try {
-    const lic = buscarLicencia(datos.cliente);
+    const lic = buscarLicencia(codigo);
     if (!lic) return responder({ ok: false, error: 'Código de cliente no válido. Revisa el link que te entregaron.' });
+
+    // PIN con bloqueo por intentos fallidos (evita que adivinen el PIN probando combinaciones)
+    if (ACCIONES_CON_PIN.indexOf(datos.accion) >= 0) {
+      const fallo = revisarPin(lic, datos.pin);
+      if (fallo) return responder({ ok: false, error: fallo });
+    }
+
     const estado = estadoLicencia(lic);
     const r = fn(datos, lic, estado);
     r.licencia = estado;
     return responder(r);
   } catch (err) {
-    return responder({ ok: false, error: String(err.message || err) });
+    // El detalle queda en el registro de ejecuciones; al público solo un mensaje genérico
+    console.error(err);
+    return responder({ ok: false, error: 'No se pudo completar la operación. Intenta de nuevo.' });
   } finally {
-    lock.releaseLock();
+    if (escribe) lock.releaseLock();
   }
+}
+
+// Cuenta solicitudes por minuto en la caché. true = ya pasó el límite
+function superaLimite(clave, maximo) {
+  const cache = CacheService.getScriptCache();
+  const k = clave + '_' + Math.floor(Date.now() / 60000);
+  const n = Number(cache.get(k) || 0) + 1;
+  cache.put(k, String(n), 120);
+  return n > maximo;
+}
+
+// Devuelve un mensaje de error si el PIN no sirve, o '' si está bien
+function revisarPin(lic, pin) {
+  const cache = CacheService.getScriptCache();
+  const kBloq = 'pinbloq_' + lic.Codigo, kFal = 'pinfal_' + lic.Codigo;
+  if (cache.get(kBloq)) return 'Demasiados intentos con PIN incorrecto. Espera ' + BLOQUEO_PIN_MIN + ' minutos.';
+  if (String(pin || '') === String(lic.PIN) && String(lic.PIN).length > 0) {
+    cache.remove(kFal);
+    return '';
+  }
+  const fallos = Number(cache.get(kFal) || 0) + 1;
+  if (fallos >= MAX_INTENTOS_PIN) {
+    cache.put(kBloq, '1', BLOQUEO_PIN_MIN * 60);
+    cache.remove(kFal);
+    console.warn('PIN bloqueado por intentos fallidos: ' + lic.Codigo);
+    return 'Demasiados intentos con PIN incorrecto. Espera ' + BLOQUEO_PIN_MIN + ' minutos.';
+  }
+  cache.put(kFal, String(fallos), BLOQUEO_PIN_MIN * 60);
+  return 'PIN incorrecto';
+}
+
+// Texto seguro para la planilla: sin caracteres de control y sin que empiece como fórmula (=, +, -, @)
+function textoSeguro(s, max) {
+  s = String(s || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max || 100);
+  return /^[=+\-@]/.test(s) ? "'" + s : s;
+}
+
+// Compara nombres sin tildes ni mayúsculas: mismo primer nombre y al menos 2 palabras en común (o todas si tiene una)
+function mismoNombre(a, b) {
+  const t = x => String(x).replace(/^'/, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/\s+/).filter(String);
+  const x = t(a), y = t(b);
+  if (!x.length || !y.length || x[0] !== y[0]) return false;
+  const comunes = y.filter(p => x.indexOf(p) >= 0).length;
+  return comunes >= Math.min(2, x.length, y.length);
 }
 
 function doGet() {
@@ -94,24 +170,32 @@ function config(datos, lic) {
 function registrar({ nombre, cedula, area, visita, firma, autoriza, version }, lic, estado) {
   if (estado.bloqueado) return { ok: false, suspendido: true, error: estado.mensaje };
 
-  nombre = String(nombre || '').trim();
+  nombre = textoSeguro(nombre, 80);
   cedula = String(cedula || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase();
   area = String(area || '').trim();
   visita = String(visita || '').trim();
   if (autoriza !== true) return { ok: false, error: 'Falta la autorización de tratamiento de datos' };
   if (nombre.length < 3 || !area) return { ok: false, error: 'Faltan datos' };
-  if (cedula.length < 5) return { ok: false, error: 'Falta la cédula' };
-  if (area === 'Visitante' && !visita) return { ok: false, error: 'Falta el área que visita' };
-  if (!firma || firma.indexOf('data:image/png;base64,') !== 0) return { ok: false, error: 'Falta la firma' };
+  if (cedula.length < 5 || cedula.length > 15) return { ok: false, error: 'Revisa el número de cédula' };
+  // Área y área visitada tienen que ser de la lista del cliente
+  const areas = config({}, lic).areas;
+  if (areas.indexOf(area) < 0) return { ok: false, error: 'Área no válida' };
+  if (area === 'Visitante' && (!visita || areas.indexOf(visita) < 0 || visita === 'Visitante')) return { ok: false, error: 'Falta el área que visita' };
+  if (area !== 'Visitante') visita = '';
+  if (!firma || firma.indexOf('data:image/png;base64,') !== 0 || firma.length > 150000) return { ok: false, error: 'Falta la firma' };
 
   const hoja = hojaRegistros(lic);
   const fecha = hoy();
 
-  // Una cédula = un registro por día: si ya está, devolvemos su mismo QR
+  // Una cédula = un registro por día. Si ya está, solo le devolvemos su QR si el nombre coincide,
+  // para que nadie saque el QR de otra persona sabiendo solo su cédula
   const filas = hoja.getDataRange().getDisplayValues();
   for (let i = 1; i < filas.length; i++) {
     if (filas[i][1] === fecha && filas[i][9] === cedula) {
-      return { ok: true, repetido: true, id: filas[i][0], fecha, hora: filas[i][2], nombre: filas[i][3], cedula, area: filas[i][4], visita: filas[i][8] };
+      if (!mismoNombre(filas[i][3], nombre)) {
+        return { ok: false, error: 'Esta cédula ya tiene un registro hoy. Si eres tú, escribe tu nombre como la primera vez o acércate a portería.' };
+      }
+      return { ok: true, repetido: true, id: filas[i][0], fecha, hora: filas[i][2], nombre: filas[i][3].replace(/^'/, ''), cedula, area: filas[i][4], visita: filas[i][8] };
     }
   }
 
@@ -125,7 +209,7 @@ function registrar({ nombre, cedula, area, visita, firma, autoriza, version }, l
   const autorizacion = 'SI ' + String(version || '').slice(0, 30) + ' ' + fecha + ' ' + hora;
 
   hoja.appendRow([id, fecha, hora, nombre, area, linkFirma, 'NO', '', visita, cedula, autorizacion]);
-  return { ok: true, id, fecha, hora, nombre, cedula, area, visita };
+  return { ok: true, id, fecha, hora, nombre: nombre.replace(/^'/, ''), cedula, area, visita };
 }
 
 function validar({ id, pin }, lic, estado) {
@@ -506,12 +590,46 @@ function reportesSemanales() {
 }
 
 function reportesMensuales() {
+  if (RETENCION_MESES > 0) {
+    clientesConDatos().forEach(lic => {
+      try { Logger.log(borrarRegistrosViejos(lic)); } catch (e) { console.error(lic.Codigo + ': ' + e); }
+    });
+  }
   const d = new Date();
   const anterior = new Date(d.getFullYear(), d.getMonth() - 1, 1);
   const mes = Utilities.formatDate(anterior, zona(), 'yyyy-MM');
   clientesParaReporte().forEach(lic => {
     try { Logger.log(reporteMensualCliente(lic, mes)); } catch (e) { Logger.log(lic.Codigo + ': ' + e); }
   });
+}
+
+// Todos los clientes que ya tienen planilla de datos (incluye suspendidos)
+function clientesConDatos() {
+  const valores = hojaLicencias().getDataRange().getValues();
+  const lista = [];
+  for (let i = 1; i < valores.length; i++) {
+    const lic = buscarLicencia(valores[i][0]);
+    if (lic && lic.HojaDatos) lista.push(lic);
+  }
+  return lista;
+}
+
+// Ley 1581: los datos se guardan solo el tiempo necesario. Borra filas y firmas más viejas que RETENCION_MESES
+function borrarRegistrosViejos(lic) {
+  const d = new Date();
+  const limite = Utilities.formatDate(new Date(d.getFullYear(), d.getMonth() - RETENCION_MESES, 1), zona(), 'yyyy-MM-dd');
+  const hoja = hojaRegistros(lic);
+  const filas = hoja.getDataRange().getDisplayValues();
+  // Las filas se agregan en orden, así que las viejas están arriba
+  let n = 0;
+  while (n + 1 < filas.length && filas[n + 1][1] && filas[n + 1][1] < limite) n++;
+  if (!n) return lic.Codigo + ': nada que borrar';
+  for (let i = 1; i <= n; i++) {
+    const m = String(filas[i][5]).match(/\/d\/([\w-]+)/) || String(filas[i][5]).match(/id=([\w-]+)/);
+    if (m) { try { DriveApp.getFileById(m[1]).setTrashed(true); } catch (e) { /* ya no existe */ } }
+  }
+  hoja.deleteRows(2, n);
+  return lic.Codigo + ': ' + n + ' registros anteriores a ' + limite + ' borrados';
 }
 
 // Clientes con planilla de datos y licencia no bloqueada
@@ -640,7 +758,9 @@ function instalar() {
   if (hoja.getLastRow() < 2) {
     const vence = new Date();
     vence.setMonth(vence.getMonth() + 1);
-    hoja.appendRow(['DEMO01', 'Cliente de prueba', 'Activo', vence, '1234', HORA_TOPE_DEFECTO, AREAS_DEFECTO,
+    // PIN de 6 dígitos al azar: no uses PIN cortos ni fáciles (1234, 0000, el año…)
+    const pinEjemplo = String(Math.floor(100000 + Math.random() * 900000));
+    hoja.appendRow(['DEMO01', 'Cliente de prueba', 'Activo', vence, pinEjemplo, HORA_TOPE_DEFECTO, AREAS_DEFECTO,
       'EMPRESA DE PRUEBA S.A.S.', '900.000.000-0', 'Calle 1 # 2-3', 'Bogotá, Colombia',
       'datos@empresa.com', '(+57) 300 000 0000', '', 'Fila de ejemplo', '', '']);
   }

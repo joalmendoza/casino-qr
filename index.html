@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; media-src 'self' blob: mediastream:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
   <title>Casino QR</title>
-  <link rel="stylesheet" href="css/estilos.css?v=7">
+  <link rel="stylesheet" href="css/estilos.css?v=8">
 </head>
 <body>
 <div class="wrap">
@@ -20,8 +23,8 @@
   </div>
   <p class="dato centro">El QR que se pega en la entrada debe apuntar al link de <b>registro</b> con el código del cliente (por ejemplo <b>registro.html?c=ABC01</b>).</p>
 </div>
-<script src="js/config.js?v=7"></script>
-<script src="js/api.js?v=7"></script>
+<script src="js/config.js?v=8"></script>
+<script src="js/api.js?v=8"></script>
 <script>
   document.querySelectorAll('a.btn').forEach(a => a.href = conCliente(a.getAttribute('href')));
 </script>

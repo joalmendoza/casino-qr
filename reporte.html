@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; media-src 'self' blob: mediastream:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#1e3a8a">
   <title>Reporte - Casino</title>
-  <link rel="stylesheet" href="css/estilos.css?v=7">
+  <link rel="stylesheet" href="css/estilos.css?v=8">
   <style>
     body { padding: 0; }
     .app { max-width: 560px; margin: 0 auto; min-height: 100vh; padding-bottom: 76px; }
@@ -256,8 +259,8 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="js/config.js?v=7"></script>
-<script src="js/api.js?v=7"></script>
+<script src="js/config.js?v=8"></script>
+<script src="js/api.js?v=8"></script>
 <script>
   const $ = id => document.getElementById(id);
   if (!CONFIG.API_URL) $('aviso-demo').classList.remove('hidden');
@@ -588,7 +591,12 @@
   function descargarCSV(lista, nombreArchivo) {
     const cab = 'ID;Fecha;Nombre;Area;HoraIngreso;Almorzo;HoraAlmuerzo;AreaVisita;Cedula';
     const lineas = lista.map(f => [f.id, f.fecha, f.nombre, f.area, f.hora, f.almorzo ? 'SI' : 'NO', f.horaAlmuerzo, f.visita, f.cedula]
-      .map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';'));
+      .map(v => {
+        // Si un dato empieza con = + - @ Excel lo tomaría como fórmula: se le antepone un apóstrofo
+        let t = String(v ?? '');
+        if (/^[=+\-@\t\r]/.test(t)) t = "'" + t;
+        return `"${t.replace(/"/g, '""')}"`;
+      }).join(';'));
     const blob = new Blob(['﻿' + [cab, ...lineas].join('\n')], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
