@@ -24,7 +24,7 @@ const CONTACTO_PROVEEDOR = 'tu-correo@ejemplo.com · WhatsApp 300 000 0000';
 const URL_APP = 'https://joalmendoza.github.io/casino-qr/';   // cámbiala si publicas en Cloudflare Pages
 const AVISO_DIAS = 5;      // días antes del vencimiento en que empieza el aviso
 const GRACIA_DIAS = 3;     // días después del vencimiento en que todavía funciona (con aviso)
-const HORA_REPORTE = 15;   // hora (0-23) en que se genera y envía el Excel del día. El mensual sale el día 1 a las 6 a. m.
+const HORA_REPORTE = 6;    // hora (0-23) en que se generan los Excel: el semanal cada lunes y el mensual el día 1
 
 const HORA_TOPE_DEFECTO = '09:30';
 const AREAS_DEFECTO = 'Producción, Mantenimiento, Control calidad, Logística, Seguridad, HSE, Gestión Humana, Contabilidad, Visitante';
@@ -44,7 +44,7 @@ function doPost(e) {
     return responder({ ok: false, error: 'Solicitud inválida' });
   }
 
-  const acciones = { config, registrar, validar, resumen, guardarTope };
+  const acciones = { config, registrar, validar, resumen, resumenSemana, guardarTope };
   const fn = acciones[datos.accion];
   if (!fn) return responder({ ok: false, error: 'Acción desconocida' });
 
@@ -154,6 +154,17 @@ function resumen({ pin }, lic) {
     .filter(f => f[1] === fecha)
     .map(f => ({ id: f[0], fecha: f[1], hora: f[2], nombre: f[3], area: f[4], almorzo: f[6] === 'SI', horaAlmuerzo: f[7], visita: f[8] || '', cedula: f[9] || '' }));
   return { ok: true, fecha, filas };
+}
+
+// Registros de una semana (lunes a domingo) para descargar desde el reporte. semana: 'actual' o 'anterior'
+function resumenSemana({ pin, semana }, lic) {
+  if (pin !== String(lic.PIN)) return { ok: false, error: 'PIN incorrecto' };
+  let lunes = lunesDe(hoy());
+  if (semana === 'anterior') lunes = sumarDias(lunes, -7);
+  const domingo = sumarDias(lunes, 6);
+  const filas = registrosDe(lic, f => f[1] >= lunes && f[1] <= domingo)
+    .map(f => ({ id: f[0], fecha: f[1], hora: f[2], nombre: f[3], area: f[4], almorzo: f[6] === 'SI', horaAlmuerzo: f[7], visita: f[8] || '', cedula: f[9] || '' }));
+  return { ok: true, desde: lunes, hasta: domingo, filas };
 }
 
 function guardarTope({ pin, horaTope }, lic) {
@@ -324,7 +335,8 @@ function onOpen() {
     .addItem('Ver links del cliente (fila seleccionada)', 'menuLinks')
     .addItem('Compartir planilla en vivo (fila seleccionada)', 'menuCompartir')
     .addSeparator()
-    .addItem('Generar Excel de hoy ahora (fila seleccionada)', 'menuReporteHoy')
+    .addItem('Generar Excel de esta semana (fila seleccionada)', 'menuSemanaActual')
+    .addItem('Generar Excel de la semana pasada (fila seleccionada)', 'menuSemanaPasada')
     .addItem('Activar reportes automáticos (diario y mensual)', 'activarReportes')
     .addToUi();
 }
@@ -383,31 +395,35 @@ function menuCompartir() {
     : 'Escribe primero los correos en la columna CorreosLectura (separados por coma).');
 }
 
-function menuReporteHoy() {
+function menuSemanaActual() {
   const lic = filaSeleccionada();
-  if (!lic) return;
-  const r = reporteDiarioCliente(lic, hoy());
-  SpreadsheetApp.getUi().alert(r);
+  if (lic) SpreadsheetApp.getUi().alert(reporteSemanalCliente(lic, lunesDe(hoy())));
+}
+
+function menuSemanaPasada() {
+  const lic = filaSeleccionada();
+  if (lic) SpreadsheetApp.getUi().alert(reporteSemanalCliente(lic, sumarDias(lunesDe(hoy()), -7)));
 }
 
 // ================= Reportes automáticos en Excel =================
 
-// Crea los activadores: Excel diario a la HORA_REPORTE y mensual el día 1 a las 6 a. m.
+// Crea los activadores: Excel semanal (lunes a domingo) cada lunes y mensual el día 1
 function activarReportes() {
   ScriptApp.getProjectTriggers()
-    .filter(t => ['reportesDiarios', 'reportesMensuales'].indexOf(t.getHandlerFunction()) >= 0)
+    .filter(t => ['reportesDiarios', 'reportesSemanales', 'reportesMensuales'].indexOf(t.getHandlerFunction()) >= 0)
     .forEach(t => ScriptApp.deleteTrigger(t));
-  ScriptApp.newTrigger('reportesDiarios').timeBased().everyDays(1).atHour(HORA_REPORTE).nearMinute(0).inTimezone(zona()).create();
-  ScriptApp.newTrigger('reportesMensuales').timeBased().onMonthDay(1).atHour(6).inTimezone(zona()).create();
-  const msg = 'Reportes automáticos activados: Excel diario a las ' + hora12(String(HORA_REPORTE).padStart(2, '0') + ':00') +
-    ' y mensual el día 1 de cada mes.';
+  ScriptApp.newTrigger('reportesSemanales').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(HORA_REPORTE).inTimezone(zona()).create();
+  ScriptApp.newTrigger('reportesMensuales').timeBased().onMonthDay(1).atHour(HORA_REPORTE).inTimezone(zona()).create();
+  const msg = 'Reportes automáticos activados: Excel de la semana anterior cada lunes y Excel del mes anterior el día 1, ' +
+    'a eso de las ' + hora12(String(HORA_REPORTE).padStart(2, '0') + ':00');
   try { SpreadsheetApp.getUi().alert(msg); } catch (e) { Logger.log(msg); }
 }
 
-function reportesDiarios() {
-  const fecha = hoy();
+// Corre los lunes: reporte de la semana que acaba de terminar (lunes a domingo)
+function reportesSemanales() {
+  const lunes = sumarDias(lunesDe(hoy()), -7);
   clientesParaReporte().forEach(lic => {
-    try { Logger.log(reporteDiarioCliente(lic, fecha)); } catch (e) { Logger.log(lic.Codigo + ': ' + e); }
+    try { Logger.log(reporteSemanalCliente(lic, lunes)); } catch (e) { Logger.log(lic.Codigo + ': ' + e); }
   });
 }
 
@@ -431,48 +447,38 @@ function clientesParaReporte() {
   return lista;
 }
 
-function reporteDiarioCliente(lic, fecha) {
-  const filas = registrosDe(lic, f => f[1] === fecha);
-  const alm = filas.filter(f => f[6] === 'SI').length;
-  const fechaLinda = fecha.split('-').reverse().join('/');
-  const nombre = 'Casino_' + lic.Codigo + '_' + fecha;
-
-  const resumen = [['Cliente', lic.Cliente, ''], ['Fecha', fechaLinda, ''], ['Personas registradas', filas.length, ''],
-    ['Almorzaron', alm, ''], ['Sin almorzar', filas.length - alm, ''],
-    ['Visitantes', filas.filter(f => f[4] === 'Visitante').length, ''], ['', '', ''], ['Área', 'Registrados', 'Almorzaron']]
-    .concat(porArea(filas).map(a => [a.area, a.reg, a.alm]));
-
-  const blob = crearExcel(nombre, [
-    { nombre: 'Registro', texto: true, filas: [COLS_DETALLE].concat(filas.map(filaDetalle)) },
-    { nombre: 'Resumen', filas: resumen }
-  ]);
-  const archivo = carpetaReportes(lic, fecha.slice(0, 7)).createFile(blob);
-
-  const asunto = 'Casino ' + lic.Cliente + ' – ' + fechaLinda + ': ' + alm + (alm === 1 ? ' almuerzo' : ' almuerzos');
-  const cuerpo = '<p>Reporte del casino del <b>' + fechaLinda + '</b>.</p><ul><li>Personas registradas: <b>' + filas.length +
-    '</b></li><li>Almorzaron: <b>' + alm + '</b></li><li>Sin almorzar: <b>' + (filas.length - alm) + '</b></li></ul>' +
-    '<p>El detalle va en el Excel adjunto.</p>';
-  const enviado = enviarReporte(lic, asunto, cuerpo, blob);
-  return lic.Codigo + ': Excel del ' + fechaLinda + ' guardado (' + archivo.getName() + ')' + (enviado ? ' y enviado a ' + enviado : '');
+function reporteSemanalCliente(lic, lunes) {
+  const domingo = sumarDias(lunes, 6);
+  const titulo = 'semana del ' + fechaLinda(lunes) + ' al ' + fechaLinda(domingo);
+  const nombre = 'Casino_' + lic.Codigo + '_semana_' + lunes + '_al_' + domingo;
+  return reportePeriodo(lic, lunes, domingo, titulo, nombre, lunes.slice(0, 7));
 }
 
 function reporteMensualCliente(lic, mes) {
-  const filas = registrosDe(lic, f => f[1].slice(0, 7) === mes);
   const [anio, m] = mes.split('-').map(Number);
   const nombreMes = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][m - 1];
-  const nombre = 'Casino_' + lic.Codigo + '_' + mes + '_mensual';
+  const ultimo = mes + '-' + String(new Date(anio, m, 0).getDate()).padStart(2, '0');
+  return reportePeriodo(lic, mes + '-01', ultimo, nombreMes + ' ' + anio, 'Casino_' + lic.Codigo + '_' + mes + '_mensual', mes);
+}
 
-  const dias = [['Fecha', 'Día', 'Registrados', 'Almorzaron']];
-  const nombresDia = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-  for (let d = 1; d <= new Date(anio, m, 0).getDate(); d++) {
-    const f = mes + '-' + String(d).padStart(2, '0');
-    const delDia = filas.filter(x => x[1] === f);
-    dias.push([String(d).padStart(2, '0') + '/' + String(m).padStart(2, '0') + '/' + anio, nombresDia[new Date(anio, m - 1, d).getDay()],
-      delDia.length, delDia.filter(x => x[6] === 'SI').length]);
-  }
+// Excel de un rango de fechas: hoja por día, resumen por área y detalle completo
+function reportePeriodo(lic, desde, hasta, titulo, nombre, carpetaMes) {
+  const filas = registrosDe(lic, f => f[1] >= desde && f[1] <= hasta);
   const alm = filas.filter(f => f[6] === 'SI').length;
-  const resumen = [['Cliente', lic.Cliente, '', ''], ['Mes', nombreMes + ' ' + anio, '', ''],
-    ['Total registros', filas.length, '', ''], ['Total almuerzos', alm, '', ''], ['', '', '', ''],
+
+  const dias = [['Fecha', 'Día', 'Registrados', 'Almorzaron', 'Sin almorzar']];
+  const nombresDia = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  for (let f = desde; f <= hasta; f = sumarDias(f, 1)) {
+    const delDia = filas.filter(x => x[1] === f);
+    const almDia = delDia.filter(x => x[6] === 'SI').length;
+    const [y, mo, d] = f.split('-').map(Number);
+    dias.push([fechaLinda(f), nombresDia[new Date(y, mo - 1, d).getDay()], delDia.length, almDia, delDia.length - almDia]);
+  }
+  dias.push(['Total', '', filas.length, alm, filas.length - alm]);
+
+  const resumen = [['Cliente', lic.Cliente, '', ''], ['Periodo', titulo, '', ''],
+    ['Total registros', filas.length, '', ''], ['Total almuerzos', alm, '', ''],
+    ['Visitantes', filas.filter(f => f[4] === 'Visitante').length, '', ''], ['', '', '', ''],
     ['Área', 'Registrados', 'Almorzaron', 'Visitas recibidas']]
     .concat(porArea(filas).map(a => [a.area, a.reg, a.alm, a.visitas]));
 
@@ -481,12 +487,14 @@ function reporteMensualCliente(lic, mes) {
     { nombre: 'Resumen', filas: resumen },
     { nombre: 'Detalle', texto: true, filas: [COLS_DETALLE].concat(filas.map(filaDetalle)) }
   ]);
-  const archivo = carpetaReportes(lic, mes).createFile(blob);
-  const asunto = 'Casino ' + lic.Cliente + ' – resumen de ' + nombreMes + ' ' + anio + ': ' + alm + (alm === 1 ? ' almuerzo' : ' almuerzos');
-  const cuerpo = '<p>Resumen del casino de <b>' + nombreMes + ' ' + anio + '</b>.</p><ul><li>Total registros: <b>' + filas.length +
-    '</b></li><li>Total almuerzos: <b>' + alm + '</b></li></ul><p>El detalle por día y por área va en el Excel adjunto.</p>';
+  const archivo = carpetaReportes(lic, carpetaMes).createFile(blob);
+
+  const asunto = 'Casino ' + lic.Cliente + ' – ' + titulo + ': ' + alm + (alm === 1 ? ' almuerzo' : ' almuerzos');
+  const cuerpo = '<p>Reporte del casino, <b>' + titulo + '</b>.</p><ul><li>Total registros: <b>' + filas.length +
+    '</b></li><li>Total almuerzos: <b>' + alm + '</b></li><li>Sin almorzar: <b>' + (filas.length - alm) + '</b></li></ul>' +
+    '<p>El detalle por día y por área va en el Excel adjunto.</p>';
   const enviado = enviarReporte(lic, asunto, cuerpo, blob);
-  return lic.Codigo + ': Excel de ' + nombreMes + ' guardado (' + archivo.getName() + ')' + (enviado ? ' y enviado a ' + enviado : '');
+  return lic.Codigo + ': Excel de ' + titulo + ' guardado (' + archivo.getName() + ')' + (enviado ? ' y enviado a ' + enviado : '');
 }
 
 const COLS_DETALLE = ['Cédula', 'Nombre', 'Área', 'Visita a', 'Fecha', 'Hora ingreso', 'Almorzó', 'Hora almuerzo'];
@@ -586,6 +594,23 @@ function cedulaOculta(c) {
 function hora12(hhmm) {
   const p = String(hhmm).split(':').map(Number);
   return (p[0] % 12 || 12) + ':' + String(p[1]).padStart(2, '0') + (p[0] < 12 ? ' a. m.' : ' p. m.');
+}
+
+// Lunes de la semana de una fecha 'aaaa-mm-dd'
+function lunesDe(fecha) {
+  const [y, m, d] = fecha.split('-').map(Number);
+  const dia = new Date(y, m - 1, d).getDay();          // 0 = domingo
+  return sumarDias(fecha, dia === 0 ? -6 : 1 - dia);
+}
+
+function sumarDias(fecha, n) {
+  const [y, m, d] = fecha.split('-').map(Number);
+  const x = new Date(y, m - 1, d + n);
+  return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+}
+
+function fechaLinda(fecha) {
+  return fecha.split('-').reverse().join('/');
 }
 
 function horaAhora() {

@@ -142,13 +142,14 @@ Genera un QR que apunte al link de registro **con el código del cliente** (ej: 
 ## Reportes automáticos en Excel
 Una vez montado el servidor, en la planilla de licencias usa **Casino QR → Activar reportes automáticos** (solo una vez). Desde ahí:
 
-- **Todos los días a las 3:00 p. m.** se genera un Excel por cliente con la lista del día (cédula, nombre, área, visita a, hora de ingreso, si almorzó y a qué hora) y una hoja de resumen con totales y por área.
-- **El día 1 de cada mes a las 6:00 a. m.** sale el Excel del mes anterior: almuerzos por día, resumen por área y el detalle completo. Sirve para cuadrar con el proveedor del casino.
-- Se guardan en tu Drive: `Casino QR - Clientes / <Cliente> / Reportes / 2026-10 / Casino_ABC01_2026-10-19.xlsx`.
+- **Cada lunes a las 6:00 a. m.** se genera un Excel por cliente con la **semana anterior (lunes a domingo)**: hoja *Por día* (registrados, almorzaron y sin almorzar de cada día, con total), hoja *Resumen* (totales y por área) y hoja *Detalle* (cédula, nombre, área, visita a, fecha, hora de ingreso, si almorzó y a qué hora).
+- **El día 1 de cada mes** sale el Excel del mes anterior con la misma estructura. Sirve para cuadrar con el proveedor del casino.
+- Se guardan en tu Drive: `Casino QR - Clientes / <Cliente> / Reportes / 2026-10 / Casino_ABC01_semana_2026-10-12_al_2026-10-18.xlsx`.
 - Si el cliente tiene correos en la columna **CorreoReportes**, se los manda adjuntos.
 - A los clientes suspendidos no se les generan.
 - La hora se cambia en `HORA_REPORTE` (arriba en `Code.gs`) y luego se vuelve a usar **Activar reportes automáticos**.
-- Para probar sin esperar: selecciona la fila del cliente y usa **Generar Excel de hoy ahora**.
+- Para generarlo cuando quieras: selecciona la fila del cliente y usa **Generar Excel de esta semana** o **Generar Excel de la semana pasada**.
+- El encargado del cliente también puede bajar la semana desde `reporte.html` → **Reporte semanal** (esta semana o la pasada).
 
 ## Ver los registros en tiempo real desde varios equipos
 - La planilla de cada cliente tiene una pestaña **"Hoy"** con los registros del día (los más recientes arriba) y los totales: ingresaron, almorzaron y sin almorzar. Se actualiza sola con cada registro y cada escaneo.

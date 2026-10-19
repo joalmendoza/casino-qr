@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reporte diario - Casino</title>
-  <link rel="stylesheet" href="css/estilos.css?v=4">
+  <link rel="stylesheet" href="css/estilos.css?v=5">
 </head>
 <body>
 <div class="wrap">
@@ -41,7 +41,17 @@
         <tbody id="tabla"></tbody>
       </table>
     </div>
-    <button class="btn" id="btn-csv">Descargar CSV</button>
+    <button class="btn" id="btn-csv">Descargar el día (Excel)</button>
+    <div class="card" style="margin-top:12px">
+      <label for="semana">Reporte semanal (lunes a domingo)</label>
+      <div class="fila">
+        <select id="semana">
+          <option value="actual">Esta semana</option>
+          <option value="anterior">Semana pasada</option>
+        </select>
+        <button class="btn" id="btn-semana" style="flex:0 0 120px;margin-bottom:14px">Descargar</button>
+      </div>
+    </div>
     <button class="btn sec" id="btn-refrescar">Actualizar</button>
     <label class="check" style="margin-top:12px">
       <input type="checkbox" id="auto" checked>
@@ -50,8 +60,8 @@
   </div>
 </div>
 
-<script src="js/config.js?v=4"></script>
-<script src="js/api.js?v=4"></script>
+<script src="js/config.js?v=5"></script>
+<script src="js/api.js?v=5"></script>
 <script>
   const $ = id => document.getElementById(id);
   let pin = '', filas = [];
@@ -115,15 +125,33 @@
     if (pin && $('auto').checked && !document.hidden && !$('paso-datos').classList.contains('hidden')) cargar();
   }, 30000);
 
-  $('btn-csv').onclick = () => {
+  // CSV con ; y BOM para que Excel lo abra directo con tildes y columnas bien separadas
+  function descargarCSV(lista, nombreArchivo) {
     const cab = 'ID;Fecha;Nombre;Area;HoraIngreso;Almorzo;HoraAlmuerzo;AreaVisita;Cedula';
-    const lineas = filas.map(f => [f.id, f.fecha, f.nombre, f.area, f.hora, f.almorzo ? 'SI' : 'NO', f.horaAlmuerzo, f.visita, f.cedula]
+    const lineas = lista.map(f => [f.id, f.fecha, f.nombre, f.area, f.hora, f.almorzo ? 'SI' : 'NO', f.horaAlmuerzo, f.visita, f.cedula]
       .map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';'));
-    const blob = new Blob(['﻿' + [cab, ...lineas].join('\n')], { type: 'text/csv' });
+    const blob = new Blob(['\ufeff' + [cab, ...lineas].join('\n')], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `casino-${hoyISO()}.csv`;
+    a.download = nombreArchivo;
     a.click();
+  }
+
+  $('btn-csv').onclick = () => descargarCSV(filas, `casino-${hoyISO()}.csv`);
+
+  $('btn-semana').onclick = async () => {
+    const btn = $('btn-semana');
+    btn.disabled = true;
+    try {
+      const r = await api('resumenSemana', { pin, semana: $('semana').value });
+      if (!r.ok) return alert(r.error);
+      if (!r.filas.length) return alert('No hay registros en esa semana');
+      descargarCSV(r.filas, `casino-semana-${r.desde}-al-${r.hasta}.csv`);
+    } catch (err) {
+      alert('No se pudo descargar: ' + err.message);
+    } finally {
+      btn.disabled = false;
+    }
   };
 </script>
 </body>

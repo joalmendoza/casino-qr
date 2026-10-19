@@ -72,6 +72,19 @@ function hora12(hhmm) {
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'a. m.' : 'p. m.'}`;
 }
 
+// Lunes de la semana de una fecha 'aaaa-mm-dd'
+function lunesDe(fecha) {
+  const [y, m, d] = fecha.split('-').map(Number);
+  const dia = new Date(y, m - 1, d).getDay();
+  return sumarDias(fecha, dia === 0 ? -6 : 1 - dia);
+}
+
+function sumarDias(fecha, n) {
+  const [y, m, d] = fecha.split('-').map(Number);
+  const x = new Date(y, m - 1, d + n);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+}
+
 function horaActual() {
   return new Date().toTimeString().slice(0, 5);
 }
@@ -147,6 +160,16 @@ const demo = {
     fila.horaAlmuerzo = horaActual();
     this._guardar(filas);
     return { ok: true, nombre: fila.nombre, doc: cedulaOculta(fila.cedula), area: fila.area, visita: fila.visita, horaIngreso: fila.hora, horaAlmuerzo: fila.horaAlmuerzo };
+  },
+
+  resumenSemana({ pin, semana }) {
+    if (pin !== CONFIG.PIN_DEMO) return { ok: false, error: 'PIN incorrecto' };
+    let lunes = lunesDe(hoyISO());
+    if (semana === 'anterior') lunes = sumarDias(lunes, -7);
+    const domingo = sumarDias(lunes, 6);
+    const filas = this._leer().filter(f => f.fecha >= lunes && f.fecha <= domingo)
+      .map(({ firma, ...resto }) => resto);
+    return { ok: true, desde: lunes, hasta: domingo, filas };
   },
 
   resumen({ pin }) {
