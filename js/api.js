@@ -162,6 +162,18 @@ const demo = {
     return { ok: true, nombre: fila.nombre, doc: cedulaOculta(fila.cedula), area: fila.area, visita: fila.visita, horaIngreso: fila.hora, horaAlmuerzo: fila.horaAlmuerzo };
   },
 
+  guardarHoraReporte({ pin, hora }) {
+    if (pin !== CONFIG.PIN_DEMO) return { ok: false, error: 'PIN incorrecto' };
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hora || '')) return { ok: false, error: 'Hora inválida' };
+    try { localStorage.setItem('casino_hora_reporte', hora); } catch {}
+    return { ok: true, horaReporte: hora };
+  },
+
+  generarDiario({ pin }) {
+    if (pin !== CONFIG.PIN_DEMO) return { ok: false, error: 'PIN incorrecto' };
+    return { ok: true, mensaje: 'En modo demo no hay servidor para guardar y enviar el Excel. Usa "Descargar el de hoy aquí".' };
+  },
+
   resumenSemana({ pin, semana }) {
     if (pin !== CONFIG.PIN_DEMO) return { ok: false, error: 'PIN incorrecto' };
     let lunes = lunesDe(hoyISO());
@@ -176,6 +188,8 @@ const demo = {
     if (pin !== CONFIG.PIN_DEMO) return { ok: false, error: 'PIN incorrecto' };
     const filas = this._leer().filter(f => f.fecha === hoyISO())
       .map(({ firma, ...resto }) => resto);
-    return { ok: true, fecha: hoyISO(), filas };
+    let horaReporte = '15:00';
+    try { horaReporte = localStorage.getItem('casino_hora_reporte') || horaReporte; } catch {}
+    return { ok: true, fecha: hoyISO(), filas, horaReporte, correosReporte: [] };
   }
 };

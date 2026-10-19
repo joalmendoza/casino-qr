@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reporte diario - Casino</title>
-  <link rel="stylesheet" href="css/estilos.css?v=5">
+  <link rel="stylesheet" href="css/estilos.css?v=6">
 </head>
 <body>
 <div class="wrap">
@@ -41,7 +41,16 @@
         <tbody id="tabla"></tbody>
       </table>
     </div>
-    <button class="btn" id="btn-csv">Descargar el día (Excel)</button>
+    <div class="card">
+      <label for="hora-diario">Reporte diario automático</label>
+      <p class="dato" style="margin:0 0 8px">Todos los días a esta hora se genera el Excel del día<span id="destino-diario"></span>.</p>
+      <div class="fila">
+        <input id="hora-diario" type="time" step="60">
+        <button class="btn" id="btn-hora-diario" style="flex:0 0 110px;margin-bottom:14px">Guardar</button>
+      </div>
+      <button class="btn" id="btn-generar">Generar y enviar el de hoy ahora</button>
+      <button class="btn sec" id="btn-csv">Descargar el de hoy aquí (Excel)</button>
+    </div>
     <div class="card" style="margin-top:12px">
       <label for="semana">Reporte semanal (lunes a domingo)</label>
       <div class="fila">
@@ -60,8 +69,8 @@
   </div>
 </div>
 
-<script src="js/config.js?v=5"></script>
-<script src="js/api.js?v=5"></script>
+<script src="js/config.js?v=6"></script>
+<script src="js/api.js?v=6"></script>
 <script>
   const $ = id => document.getElementById(id);
   let pin = '', filas = [];
@@ -70,6 +79,10 @@
     const r = await api('resumen', { pin });
     if (!r.ok) { alert(r.error); return false; }
     mostrarLicencia(r.licencia, $('aviso-licencia'));
+    if (r.horaReporte && document.activeElement !== $('hora-diario')) $('hora-diario').value = r.horaReporte;
+    $('destino-diario').textContent = r.correosReporte && r.correosReporte.length
+      ? ', se guarda y se envía a ' + r.correosReporte.join(', ')
+      : (CONFIG.API_URL ? ' y se guarda en Drive' : '');
     $('ultima').textContent = '· última: ' + new Date().toTimeString().slice(0, 8);
     filas = r.filas;
     const alm = filas.filter(f => f.almorzo).length;
@@ -136,6 +149,28 @@
     a.download = nombreArchivo;
     a.click();
   }
+
+  $('btn-hora-diario').onclick = async () => {
+    const v = $('hora-diario').value;
+    if (!v) return alert('Elige una hora');
+    const r = await api('guardarHoraReporte', { pin, hora: v });
+    alert(r.ok ? 'Listo. El reporte diario se generará todos los días a las ' + hora12(r.horaReporte) : r.error);
+  };
+
+  $('btn-generar').onclick = async () => {
+    const btn = $('btn-generar');
+    btn.disabled = true;
+    btn.textContent = 'Generando…';
+    try {
+      const r = await api('generarDiario', { pin });
+      alert(r.ok ? r.mensaje : r.error);
+    } catch (err) {
+      alert('No se pudo generar: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Generar y enviar el de hoy ahora';
+    }
+  };
 
   $('btn-csv').onclick = () => descargarCSV(filas, `casino-${hoyISO()}.csv`);
 

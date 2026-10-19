@@ -123,7 +123,8 @@ En la hoja **Licencias** agrega una fila:
 | RazonSocial, NIT, Direccion, Ciudad, CorreoDatos, Telefono | Datos del cliente para la autorización de datos y el aviso de privacidad |
 | HojaDatos | No la toques: se llena sola con la planilla de datos del cliente |
 | Notas | Lo que quieras (plan, valor, contacto) |
-| CorreoReportes | Correos que reciben el Excel semanal y el mensual (separados por coma) |
+| CorreoReportes | Correos que reciben el Excel diario, el semanal y el mensual (separados por coma) |
+| HoraReporte | Hora del Excel diario. La cambia el cliente desde el reporte. Vacío = 15:00 |
 | CorreosLectura | Correos que pueden ver la planilla en vivo, solo lectura (separados por coma) |
 
 Recarga la planilla y aparece el menú **Casino QR**. Selecciona la fila del cliente y usa **Ver links del cliente**: te da los 3 links con su código (`registro.html?c=ABC01`, etc.) y su PIN para entregárselos.
@@ -142,13 +143,14 @@ Genera un QR que apunte al link de registro **con el código del cliente** (ej: 
 ## Reportes automáticos en Excel
 Una vez montado el servidor, en la planilla de licencias usa **Casino QR → Activar reportes automáticos** (solo una vez). Desde ahí:
 
+- **Todos los días a la hora que elija el cliente** (por defecto 3:00 p. m.) se genera el Excel del día: hoja *Registro* con la lista y hoja *Resumen* con totales y por área. El encargado cambia la hora desde `reporte.html` → **Reporte diario automático**. Ahí mismo tiene **Generar y enviar el de hoy ahora** (lo guarda en Drive y lo manda por correo) y **Descargar el de hoy aquí** (le baja el archivo al celular o computador).
 - **Cada lunes a las 6:00 a. m.** se genera un Excel por cliente con la **semana anterior (lunes a domingo)**: hoja *Por día* (registrados, almorzaron y sin almorzar de cada día, con total), hoja *Resumen* (totales y por área) y hoja *Detalle* (cédula, nombre, área, visita a, fecha, hora de ingreso, si almorzó y a qué hora).
 - **El día 1 de cada mes** sale el Excel del mes anterior con la misma estructura. Sirve para cuadrar con el proveedor del casino.
 - Se guardan en tu Drive: `Casino QR - Clientes / <Cliente> / Reportes / 2026-10 / Casino_ABC01_semana_2026-10-12_al_2026-10-18.xlsx`.
 - Si el cliente tiene correos en la columna **CorreoReportes**, se los manda adjuntos.
 - A los clientes suspendidos no se les generan.
 - La hora se cambia en `HORA_REPORTE` (arriba en `Code.gs`) y luego se vuelve a usar **Activar reportes automáticos**.
-- Para generarlo cuando quieras: selecciona la fila del cliente y usa **Generar Excel de esta semana** o **Generar Excel de la semana pasada**.
+- Para generarlo cuando quieras: selecciona la fila del cliente y usa **Generar Excel de hoy**, **de esta semana** o **de la semana pasada**.
 - El encargado del cliente también puede bajar la semana desde `reporte.html` → **Reporte semanal** (esta semana o la pasada).
 
 ## Ver los registros en tiempo real desde varios equipos

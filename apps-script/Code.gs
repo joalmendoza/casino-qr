@@ -11,6 +11,7 @@
  *
  *   CorreoReportes: a quién se le manda el Excel semanal y mensual (varios separados por coma)
  *   CorreosLectura: quiénes pueden ver la planilla en vivo, solo lectura (varios separados por coma)
+ *   HoraReporte: hora en que se genera y envía el Excel del día (el cliente la cambia desde el reporte). Vacío = 15:00
  *
  * Planilla de cada cliente, hoja "Registros":
  *   A ID | B Fecha | C HoraIngreso | D Nombre | E Area | F Firma (link Drive) | G Almorzo | H HoraAlmuerzo
@@ -25,6 +26,7 @@ const URL_APP = 'https://joalmendoza.github.io/casino-qr/';   // cámbiala si pu
 const AVISO_DIAS = 5;      // días antes del vencimiento en que empieza el aviso
 const GRACIA_DIAS = 3;     // días después del vencimiento en que todavía funciona (con aviso)
 const HORA_REPORTE = 6;    // hora (0-23) en que se generan los Excel: el semanal cada lunes y el mensual el día 1
+const HORA_DIARIO_DEFECTO = '15:00';   // hora del Excel diario si el cliente no ha elegido otra
 
 const HORA_TOPE_DEFECTO = '09:30';
 const AREAS_DEFECTO = 'Producción, Mantenimiento, Control calidad, Logística, Seguridad, HSE, Gestión Humana, Contabilidad, Visitante';
@@ -32,7 +34,7 @@ const HOJA_LIC = 'Licencias';
 const HOJA_REG = 'Registros';
 const CARPETA_RAIZ = 'Casino QR - Clientes';
 const COLS = ['Codigo', 'Cliente', 'Estado', 'Vence', 'PIN', 'HoraTope', 'Areas', 'RazonSocial', 'NIT',
-  'Direccion', 'Ciudad', 'CorreoDatos', 'Telefono', 'HojaDatos', 'Notas', 'CorreoReportes', 'CorreosLectura'];
+  'Direccion', 'Ciudad', 'CorreoDatos', 'Telefono', 'HojaDatos', 'Notas', 'CorreoReportes', 'CorreosLectura', 'HoraReporte'];
 
 // ================= Entrada web =================
 
@@ -44,7 +46,7 @@ function doPost(e) {
     return responder({ ok: false, error: 'Solicitud inválida' });
   }
 
-  const acciones = { config, registrar, validar, resumen, resumenSemana, guardarTope };
+  const acciones = { config, registrar, validar, resumen, resumenSemana, guardarTope, guardarHoraReporte, generarDiario };
   const fn = acciones[datos.accion];
   if (!fn) return responder({ ok: false, error: 'Acción desconocida' });
 
@@ -153,7 +155,23 @@ function resumen({ pin }, lic) {
   const filas = hojaRegistros(lic).getDataRange().getDisplayValues().slice(1)
     .filter(f => f[1] === fecha)
     .map(f => ({ id: f[0], fecha: f[1], hora: f[2], nombre: f[3], area: f[4], almorzo: f[6] === 'SI', horaAlmuerzo: f[7], visita: f[8] || '', cedula: f[9] || '' }));
-  return { ok: true, fecha, filas };
+  return { ok: true, fecha, filas, horaReporte: lic.HoraReporte, correosReporte: listaCorreos(lic.CorreoReportes) };
+}
+
+function guardarHoraReporte({ pin, hora }, lic) {
+  if (pin !== String(lic.PIN)) return { ok: false, error: 'PIN incorrecto' };
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hora || '')) return { ok: false, error: 'Hora inválida' };
+  escribirLicencia(lic, 'HoraReporte', hora);
+  // Si se cambia la hora, que el de hoy pueda volver a salir a la hora nueva
+  PropertiesService.getScriptProperties().deleteProperty('DIARIO_' + lic.Codigo);
+  return { ok: true, horaReporte: hora };
+}
+
+// Botón "Generar ahora" del reporte: arma el Excel del día, lo guarda en Drive y lo envía
+function generarDiario({ pin }, lic, estado) {
+  if (pin !== String(lic.PIN)) return { ok: false, error: 'PIN incorrecto' };
+  if (estado.bloqueado) return { ok: false, suspendido: true, error: estado.mensaje };
+  return { ok: true, mensaje: reporteDiarioCliente(lic, hoy()) };
 }
 
 // Registros de una semana (lunes a domingo) para descargar desde el reporte. semana: 'actual' o 'anterior'
@@ -210,6 +228,7 @@ function buscarLicencia(codigo) {
     const lic = { _fila: i + 1, _cab: cab };
     cab.forEach((c, j) => lic[c] = valores[i][j]);
     lic.HoraTope = textoHora(lic.HoraTope);
+    lic.HoraReporte = textoHora(lic.HoraReporte) || HORA_DIARIO_DEFECTO;
     return lic;
   }
   return null;
@@ -335,6 +354,7 @@ function onOpen() {
     .addItem('Ver links del cliente (fila seleccionada)', 'menuLinks')
     .addItem('Compartir planilla en vivo (fila seleccionada)', 'menuCompartir')
     .addSeparator()
+    .addItem('Generar Excel de hoy (fila seleccionada)', 'menuDiaHoy')
     .addItem('Generar Excel de esta semana (fila seleccionada)', 'menuSemanaActual')
     .addItem('Generar Excel de la semana pasada (fila seleccionada)', 'menuSemanaPasada')
     .addItem('Activar reportes automáticos (diario y mensual)', 'activarReportes')
@@ -395,6 +415,11 @@ function menuCompartir() {
     : 'Escribe primero los correos en la columna CorreosLectura (separados por coma).');
 }
 
+function menuDiaHoy() {
+  const lic = filaSeleccionada();
+  if (lic) SpreadsheetApp.getUi().alert(reporteDiarioCliente(lic, hoy()));
+}
+
 function menuSemanaActual() {
   const lic = filaSeleccionada();
   if (lic) SpreadsheetApp.getUi().alert(reporteSemanalCliente(lic, lunesDe(hoy())));
@@ -407,16 +432,37 @@ function menuSemanaPasada() {
 
 // ================= Reportes automáticos en Excel =================
 
-// Crea los activadores: Excel semanal (lunes a domingo) cada lunes y mensual el día 1
+// Crea los activadores: revisión cada hora para el Excel diario (cada cliente a su hora),
+// Excel semanal (lunes a domingo) cada lunes y mensual el día 1
 function activarReportes() {
   ScriptApp.getProjectTriggers()
     .filter(t => ['reportesDiarios', 'reportesSemanales', 'reportesMensuales'].indexOf(t.getHandlerFunction()) >= 0)
     .forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('reportesDiarios').timeBased().everyHours(1).create();
   ScriptApp.newTrigger('reportesSemanales').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(HORA_REPORTE).inTimezone(zona()).create();
   ScriptApp.newTrigger('reportesMensuales').timeBased().onMonthDay(1).atHour(HORA_REPORTE).inTimezone(zona()).create();
-  const msg = 'Reportes automáticos activados: Excel de la semana anterior cada lunes y Excel del mes anterior el día 1, ' +
-    'a eso de las ' + hora12(String(HORA_REPORTE).padStart(2, '0') + ':00');
+  const msg = 'Reportes automáticos activados:\n' +
+    '• Excel del día: a la hora que elija cada cliente en su reporte (por defecto ' + hora12(HORA_DIARIO_DEFECTO) + ').\n' +
+    '• Excel de la semana anterior: cada lunes a eso de las ' + hora12(String(HORA_REPORTE).padStart(2, '0') + ':00') + '\n' +
+    '• Excel del mes anterior: el día 1 a eso de las ' + hora12(String(HORA_REPORTE).padStart(2, '0') + ':00');
   try { SpreadsheetApp.getUi().alert(msg); } catch (e) { Logger.log(msg); }
+}
+
+// Corre cada hora: a cada cliente le genera el Excel del día cuando ya pasó su HoraReporte (una sola vez al día)
+function reportesDiarios() {
+  const fecha = hoy(), ahora = horaAhora();
+  const props = PropertiesService.getScriptProperties();
+  clientesParaReporte().forEach(lic => {
+    if (ahora < lic.HoraReporte || props.getProperty('DIARIO_' + lic.Codigo) === fecha) return;
+    try {
+      Logger.log(reporteDiarioCliente(lic, fecha));
+      props.setProperty('DIARIO_' + lic.Codigo, fecha);
+    } catch (e) { Logger.log(lic.Codigo + ': ' + e); }
+  });
+}
+
+function reporteDiarioCliente(lic, fecha) {
+  return reportePeriodo(lic, fecha, fecha, 'día ' + fechaLinda(fecha), 'Casino_' + lic.Codigo + '_' + fecha, fecha.slice(0, 7));
 }
 
 // Corre los lunes: reporte de la semana que acaba de terminar (lunes a domingo)
@@ -482,19 +528,20 @@ function reportePeriodo(lic, desde, hasta, titulo, nombre, carpetaMes) {
     ['Área', 'Registrados', 'Almorzaron', 'Visitas recibidas']]
     .concat(porArea(filas).map(a => [a.area, a.reg, a.alm, a.visitas]));
 
-  const blob = crearExcel(nombre, [
-    { nombre: 'Por día', filas: dias },
-    { nombre: 'Resumen', filas: resumen },
-    { nombre: 'Detalle', texto: true, filas: [COLS_DETALLE].concat(filas.map(filaDetalle)) }
-  ]);
+  // En el reporte de un solo día la hoja "Por día" sobra
+  const hojas = desde === hasta
+    ? [{ nombre: 'Registro', texto: true, filas: [COLS_DETALLE].concat(filas.map(filaDetalle)) }, { nombre: 'Resumen', filas: resumen }]
+    : [{ nombre: 'Por día', filas: dias }, { nombre: 'Resumen', filas: resumen },
+       { nombre: 'Detalle', texto: true, filas: [COLS_DETALLE].concat(filas.map(filaDetalle)) }];
+  const blob = crearExcel(nombre, hojas);
   const archivo = carpetaReportes(lic, carpetaMes).createFile(blob);
 
   const asunto = 'Casino ' + lic.Cliente + ' – ' + titulo + ': ' + alm + (alm === 1 ? ' almuerzo' : ' almuerzos');
   const cuerpo = '<p>Reporte del casino, <b>' + titulo + '</b>.</p><ul><li>Total registros: <b>' + filas.length +
     '</b></li><li>Total almuerzos: <b>' + alm + '</b></li><li>Sin almorzar: <b>' + (filas.length - alm) + '</b></li></ul>' +
-    '<p>El detalle por día y por área va en el Excel adjunto.</p>';
+    '<p>El detalle va en el Excel adjunto.</p>';
   const enviado = enviarReporte(lic, asunto, cuerpo, blob);
-  return lic.Codigo + ': Excel de ' + titulo + ' guardado (' + archivo.getName() + ')' + (enviado ? ' y enviado a ' + enviado : '');
+  return lic.Codigo + ': Excel (' + titulo + ') guardado (' + archivo.getName() + ')' + (enviado ? ' y enviado a ' + enviado : '');
 }
 
 const COLS_DETALLE = ['Cédula', 'Nombre', 'Área', 'Visita a', 'Fecha', 'Hora ingreso', 'Almorzó', 'Hora almuerzo'];
