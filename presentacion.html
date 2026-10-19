@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casino QR - Presentación</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;font-family:Arial,Helvetica,sans-serif;background:#0f172a;color:#1f2937}
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center;overflow:hidden}
+.otra{position:absolute;left:50%;bottom:40px;transform:translateX(-50%);background:#fff;color:#1e3a8a;border:0;border-radius:30px;padding:14px 28px;font-size:18px;font-weight:bold;cursor:pointer;display:none;z-index:9}
+.fondo{position:absolute;inset:0;background:radial-gradient(circle at 15% 20%,#1e40af 0,transparent 45%),radial-gradient(circle at 85% 80%,#0e7490 0,transparent 40%),#0f172a}
+.escena{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:70px;padding:0 80px;opacity:0;transition:opacity .6s}
+.escena.on{opacity:1}
+.texto{width:520px;color:#fff}
+.paso{display:inline-block;background:#2563eb;color:#fff;border-radius:20px;padding:6px 14px;font-size:15px;font-weight:bold;letter-spacing:.5px}
+.texto h2{font-size:40px;line-height:1.15;margin:16px 0 18px}
+.texto ul{list-style:none}
+.texto li{font-size:21px;color:#cbd5e1;margin:12px 0;display:flex;gap:12px;align-items:flex-start;opacity:0;transform:translateX(-20px)}
+.texto li b{color:#fff}
+.texto li:before{content:'✔';color:#4ade80;font-weight:bold}
+.on .texto li{animation:entra .6s forwards}
+.on .texto li:nth-child(1){animation-delay:.8s}.on .texto li:nth-child(2){animation-delay:1.8s}.on .texto li:nth-child(3){animation-delay:2.8s}.on .texto li:nth-child(4){animation-delay:3.8s}
+@keyframes entra{to{opacity:1;transform:none}}
+@keyframes sube{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{opacity:0;transform:scale(.6)}70%{transform:scale(1.06)}100%{opacity:1;transform:scale(1)}}
+
+/* Teléfono */
+.tel{width:300px;height:620px;background:#f3f4f6;border-radius:38px;border:10px solid #020617;box-shadow:0 30px 60px rgba(0,0,0,.5);overflow:hidden;position:relative;flex:0 0 300px}
+.on .tel{animation:sube .7s both}
+.th{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;padding:14px 14px 12px}
+.th small{font-size:10px;opacity:.85;display:block}
+.th b{font-size:16px}
+.tc{padding:10px}
+.lbl{font-size:10px;font-weight:bold;margin:8px 0 3px}
+.inp{background:#fff;border:1px solid #d1d5db;border-radius:7px;height:30px;font-size:12px;padding:7px 9px;color:#111}
+.inp.foco{border-color:#2563eb;box-shadow:0 0 0 2px #bfdbfe}
+.cursor{display:inline-block;width:1px;height:13px;background:#111;vertical-align:middle;animation:parp 1s steps(1) infinite}
+@keyframes parp{50%{opacity:0}}
+.firma{background:#fff;border:2px dashed #d1d5db;border-radius:8px;height:80px;margin-top:3px}
+.firma path{stroke:#111;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-dasharray:900;stroke-dashoffset:900}
+.firma.dibuja path{animation:traza 2.2s ease-in-out forwards}
+@keyframes traza{to{stroke-dashoffset:0}}
+.aut{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:7px;margin-top:8px;display:flex;gap:7px;font-size:9.5px;color:#374151;align-items:flex-start}
+.chk{width:15px;height:15px;border:2px solid #9ca3af;border-radius:4px;flex:0 0 15px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px}
+.chk.si{background:#2563eb;border-color:#2563eb}
+.boton{background:#2563eb;color:#fff;text-align:center;border-radius:9px;padding:10px;font-size:13px;font-weight:bold;margin-top:9px;position:relative;overflow:hidden}
+.boton.tap{animation:tap .5s}
+@keyframes tap{50%{transform:scale(.94);background:#1d4ed8}}
+.dedo{position:absolute;width:38px;height:38px;border-radius:50%;background:rgba(37,99,235,.35);border:2px solid rgba(255,255,255,.9);pointer-events:none;opacity:0;transition:all .6s ease;z-index:5}
+.centro{text-align:center}
+#qr1{display:inline-block;padding:8px;background:#fff;margin-top:8px}
+.code{font-family:monospace;font-size:14px;letter-spacing:1px;margin-top:4px}
+.nota{font-size:10.5px;color:#6b7280;margin-top:8px;line-height:1.4}
+
+/* Casino */
+.cam{background:#111827;height:330px;border-radius:12px;position:relative;overflow:hidden;margin-top:4px}
+.marco{position:absolute;left:50%;top:50%;width:170px;height:170px;transform:translate(-50%,-50%);border:3px solid rgba(255,255,255,.85);border-radius:12px}
+.laser{position:absolute;left:8px;right:8px;height:2px;background:#ef4444;box-shadow:0 0 8px #ef4444;top:10px;animation:laser 1.6s ease-in-out infinite alternate}
+@keyframes laser{to{top:155px}}
+.tarjetaqr{position:absolute;left:50%;top:120%;transform:translate(-50%,-50%);background:#fff;padding:7px;border-radius:8px;transition:top 1.2s ease}
+.res{border-radius:12px;padding:12px;color:#fff;text-align:center;margin-top:8px;opacity:0;transform:scale(.8);transition:all .35s}
+.res.ver{opacity:1;transform:none}
+.res b{font-size:17px;display:block}
+.res span{font-size:12px}
+.verde{background:#16a34a}.rojo{background:#dc2626}
+
+/* Panel */
+.kp{display:flex;gap:5px}
+.kp div{flex:1;background:#fff;border-radius:9px;padding:7px 3px;text-align:center}
+.kp b{display:block;font-size:20px}
+.kp span{font-size:9px;color:#6b7280}
+.c1{color:#1e3a8a}.c2{color:#16a34a}.c3{color:#d97706}
+.av2{background:#fff;border-radius:9px;padding:7px 9px;margin-top:6px;font-size:10px}
+.pr{height:6px;background:#e5e7eb;border-radius:4px;margin-top:5px;overflow:hidden}
+.pr i{display:block;height:100%;width:0;background:linear-gradient(90deg,#16a34a,#4ade80);transition:width 3s ease}
+.per{background:#fff;border-radius:9px;padding:7px 8px;display:flex;align-items:center;gap:8px;margin-top:5px;opacity:0;transform:translateY(-14px);transition:all .45s}
+.per.ver{opacity:1;transform:none}
+.per.nuevo{box-shadow:0 0 0 2px #93c5fd}
+.ini{width:28px;height:28px;border-radius:50%;color:#fff;font-size:10px;font-weight:bold;display:flex;align-items:center;justify-content:center;flex:0 0 28px}
+.per .i{flex:1}.per .i b{font-size:11px;display:block}.per .i span{font-size:9px;color:#6b7280}
+.ch{font-size:9px;font-weight:bold;border-radius:8px;padding:2px 6px;white-space:nowrap}
+.chv{background:#dcfce7;color:#166534}.chg{background:#f3f4f6;color:#6b7280}.chn{background:#dbeafe;color:#1e40af;font-size:8px}
+.vivo{display:inline-flex;align-items:center;gap:5px;font-size:9px;background:rgba(255,255,255,.18);border-radius:10px;padding:2px 7px;margin-top:5px}
+.pt{width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.3)}
+.nav{position:absolute;bottom:0;left:0;right:0;height:46px;background:#fff;border-top:1px solid #e5e7eb;display:flex}
+.nav div{flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;color:#9ca3af}
+.nav div.on2{color:#2563eb;font-weight:bold}
+
+/* Reportes */
+.card{background:#fff;border-radius:11px;padding:10px;margin-bottom:7px}
+.card h4{font-size:12px;display:flex;justify-content:space-between;align-items:center}
+.sw{width:30px;height:17px;border-radius:9px;background:#16a34a;position:relative}
+.sw:after{content:'';position:absolute;right:2px;top:2px;width:13px;height:13px;border-radius:50%;background:#fff}
+.hb{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:7px 9px;margin-top:6px;display:flex;justify-content:space-between;align-items:center}
+.hb b{font-size:17px;color:#1e3a8a}.hb span{font-size:10px;color:#2563eb;font-weight:bold}
+.barras{display:flex;align-items:flex-end;gap:5px;height:70px;margin-top:8px}
+.barras div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px}
+.barras i{display:block;width:100%;height:0;background:#93c5fd;border-radius:4px 4px 1px 1px;transition:height 1s ease}
+.barras em{font-style:normal;font-size:8px;color:#6b7280}
+.mail{position:absolute;right:-110px;top:450px;background:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 20px 40px rgba(0,0,0,.4);display:flex;gap:12px;align-items:center;opacity:0;transform:translateX(40px);transition:all .7s;width:260px}
+.mail.ver{opacity:1;transform:none}
+.xls{width:42px;height:48px;background:#16a34a;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px}
+.mail b{font-size:13px;display:block}.mail span{font-size:11px;color:#6b7280}
+
+/* Control */
+.reloj{width:230px;height:230px;border-radius:50%;background:#fff;border:10px solid #1e3a8a;position:relative;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+.aguja{position:absolute;left:50%;bottom:50%;transform-origin:bottom center;background:#1e293b;border-radius:3px}
+.ah{width:7px;height:62px;margin-left:-3.5px}
+.am{width:4px;height:88px;margin-left:-2px;background:#2563eb}
+.eje{position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px;border-radius:50%;background:#1e293b}
+.hora-dig{color:#fff;font-size:44px;font-weight:bold;text-align:center;margin-top:18px}
+.cerrado{background:#fff;border-radius:16px;padding:20px;text-align:center;width:300px;opacity:0;transform:scale(.8);transition:all .5s}
+.cerrado.ver{opacity:1;transform:none}
+.cerrado b{color:#dc2626;font-size:24px;display:block;margin-bottom:6px}
+.cerrado span{font-size:14px;color:#374151}
+
+/* Beneficios */
+.grid{display:grid;grid-template-columns:repeat(2,330px);gap:20px}
+.ben{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:22px;color:#fff;opacity:0}
+.on .ben{animation:pop .6s forwards}
+.on .ben:nth-child(1){animation-delay:.6s}.on .ben:nth-child(2){animation-delay:1.4s}.on .ben:nth-child(3){animation-delay:2.2s}.on .ben:nth-child(4){animation-delay:3s}
+.ben .ic{font-size:34px}
+.ben b{display:block;font-size:20px;margin:8px 0 4px}
+.ben span{font-size:15px;color:#cbd5e1;line-height:1.35}
+
+/* Portada / cierre */
+.portada{text-align:center;color:#fff}
+.logo{width:120px;height:120px;border-radius:30px;background:linear-gradient(135deg,#2563eb,#06b6d4);margin:0 auto 26px;display:flex;align-items:center;justify-content:center;box-shadow:0 20px 50px rgba(37,99,235,.5)}
+.on .logo{animation:pop .8s both}
+.portada h1{font-size:64px;letter-spacing:-1px}
+.portada p{font-size:26px;color:#cbd5e1;margin-top:12px}
+.on .portada h1{animation:sube .8s .3s both}.on .portada p{animation:sube .8s .7s both}
+.tag{display:inline-block;margin-top:28px;background:rgba(74,222,128,.15);color:#86efac;border:1px solid rgba(74,222,128,.4);border-radius:30px;padding:10px 22px;font-size:20px}
+.on .tag{animation:sube .8s 1.2s both}
+.prob{display:flex;gap:30px}
+.pcard{width:300px;border-radius:20px;padding:26px;color:#fff;opacity:0}
+.on .pcard{animation:pop .6s forwards}
+.pcard.mal{background:rgba(220,38,38,.15);border:1px solid rgba(248,113,113,.4);animation-delay:.4s!important}
+.pcard.bien{background:rgba(22,163,74,.15);border:1px solid rgba(74,222,128,.4);animation-delay:3.6s!important}
+.pcard h3{font-size:24px;margin-bottom:14px}
+.pcard li{font-size:18px;margin:10px 0;color:#e2e8f0;list-style:none}
+.flecha{color:#fff;font-size:50px;align-self:center;opacity:0}
+.on .flecha{animation:pop .5s 3s forwards}
+
+/* Barra de progreso del video */
+.progreso{position:absolute;left:0;bottom:0;height:5px;background:linear-gradient(90deg,#2563eb,#06b6d4);width:0}
+.marca{position:absolute;top:22px;right:30px;color:rgba(255,255,255,.6);font-size:14px;font-weight:bold;display:flex;align-items:center;gap:8px}
+.marca i{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#2563eb,#06b6d4)}
+</style></head><body>
+<div id="escenario">
+<div class="fondo"></div>
+<div class="marca"><i></i>Casino QR</div>
+
+<!-- 0 Portada -->
+<section class="escena" id="e0">
+  <div class="portada">
+    <div class="logo"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg></div>
+    <h1>Casino QR</h1>
+    <p>Control de ingreso y almuerzo con código QR</p>
+    <div class="tag">Así funciona en menos de 2 minutos</div>
+  </div>
+</section>
+
+<!-- 1 Problema -> solución -->
+<section class="escena" id="e1">
+  <div class="prob">
+    <div class="pcard mal"><h3>😩 Hoy</h3><ul><li>• Filas largas en el casino</li><li>• Listas en papel</li><li>• Almuerzos de más</li><li>• Nadie sabe cuántos van a comer</li></ul></div>
+    <div class="flecha">➜</div>
+    <div class="pcard bien"><h3>😃 Con Casino QR</h3><ul><li>• Un QR por persona</li><li>• Un almuerzo por día</li><li>• Todo en el celular</li><li>• Reportes automáticos</li></ul></div>
+  </div>
+</section>
+
+<!-- 2 Registro -->
+<section class="escena" id="e2">
+  <div class="texto"><span class="paso">PASO 1</span><h2>Al llegar, la persona se registra con su celular</h2>
+    <ul><li><span>Escanea el <b>QR de portería</b></span></li><li><span>Nombre, cédula y área. <b>Fecha y hora automáticas</b></span></li><li><span><b>Firma con el dedo</b></span></li><li><span>Autoriza el uso de sus datos (Ley 1581)</span></li></ul></div>
+  <div class="tel" id="tel-reg">
+    <div class="dedo" id="dedo"></div>
+    <div class="th"><small>EMPRESA ABC S.A.S.</small><b>Registro de ingreso</b></div>
+    <div class="tc">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b7280"><span>Fecha: <b>19/10/2026</b></span><span>Hora: <b>07:52</b></span></div>
+      <div class="lbl">Nombre y apellido</div><div class="inp" id="f-nombre"></div>
+      <div class="lbl">Cédula</div><div class="inp" id="f-cedula"></div>
+      <div class="lbl">Área</div><div class="inp" id="f-area" style="display:flex;justify-content:space-between"><span></span><span>▾</span></div>
+      <div class="lbl">Firma</div>
+      <svg class="firma" id="firma" viewBox="0 0 260 80" width="100%"><path d="M20 55 C 30 20, 45 20, 48 50 S 60 70, 72 40 S 90 15, 98 48 C 102 62, 112 62, 120 38 C 126 22, 136 30, 132 48 C 130 58, 146 60, 160 36 C 170 22, 180 28, 178 46 S 200 62, 215 30 L 240 26"/></svg>
+      <div class="aut"><div class="chk" id="chk"></div><div>Autorizo el tratamiento de mis datos personales para el control de ingreso y casino.</div></div>
+      <div class="boton" id="btn-reg">Registrar ingreso</div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 QR -->
+<section class="escena" id="e3">
+  <div class="texto"><span class="paso">PASO 2</span><h2>Recibe su QR personal del día</h2>
+    <ul><li><span>Vale <b>solo hoy</b> y para <b>un almuerzo</b></span></li><li><span>Queda guardado en su celular</span></li><li><span>Si se registra dos veces, recibe el <b>mismo QR</b></span></li></ul></div>
+  <div class="tel">
+    <div class="th"><small>EMPRESA ABC S.A.S.</small><b>Tu QR del almuerzo</b></div>
+    <div class="tc centro">
+      <div style="font-size:18px;font-weight:bold;margin-top:12px">María Torres</div>
+      <div style="font-size:11px;color:#6b7280">Producción · ingreso 07:52 · 19/10/2026</div>
+      <div id="qr1"></div>
+      <div class="code">C261019-7G9Y5N</div>
+      <div class="nota">Muestra este código en el casino.<br>Vale solo por hoy y para un almuerzo.</div>
+      <div class="boton" style="margin-top:14px">Descargar QR</div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 Casino -->
+<section class="escena" id="e4">
+  <div class="texto"><span class="paso">PASO 3</span><h2>En el casino se escanea el QR</h2>
+    <ul><li><span><b style="color:#4ade80">Verde:</b> puede almorzar</span></li><li><span><b style="color:#f87171">Rojo:</b> ya almorzó, QR de otro día o no registrado</span></li><li><span>Funciona con <b>cualquier celular o tablet</b></span></li></ul></div>
+  <div class="tel">
+    <div class="th"><small>EMPRESA ABC S.A.S.</small><b>Control de casino</b></div>
+    <div class="tc">
+      <div class="cam"><div class="marco"><div class="laser"></div></div><div class="tarjetaqr" id="tqr"><div id="qr2"></div></div></div>
+      <div class="res verde" id="res1"><b>✔ PUEDE ALMORZAR</b><span>María Torres (CC •••5666) · Producción</span></div>
+      <div class="res rojo hidden2" id="res2" style="display:none"><b>✖ Ya almorzó a las 12:05</b><span>María Torres · Producción</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 Panel -->
+<section class="escena" id="e5">
+  <div class="texto"><span class="paso">PASO 4</span><h2>El encargado ve todo en vivo</h2>
+    <ul><li><span>Desde <b>varios celulares al mismo tiempo</b></span></li><li><span>Quién entró, quién almorzó y quién falta</span></li><li><span>Buscador y filtros. <b>Se actualiza solo</b></span></li></ul></div>
+  <div class="tel">
+    <div class="th"><small>EMPRESA ABC S.A.S.</small><b>Hoy · lunes 19 oct</b><br><span class="vivo"><span class="pt"></span>En vivo · actualizado hace 3 s</span></div>
+    <div class="tc">
+      <div class="kp"><div><b class="c1" id="n1">0</b><span>Ingresaron</span></div><div><b class="c2" id="n2">0</b><span>Almorzaron</span></div><div><b class="c3" id="n3">0</b><span>Pendientes</span></div></div>
+      <div class="av2"><div style="display:flex;justify-content:space-between"><span>Avance del almuerzo</span><b id="n4">0%</b></div><div class="pr"><i id="barra"></i></div></div>
+      <div id="lista"></div>
+    </div>
+    <div class="nav"><div class="on2">Hoy</div><div>Reportes</div><div>Ajustes</div></div>
+  </div>
+</section>
+
+<!-- 6 Reportes -->
+<section class="escena" id="e6">
+  <div class="texto"><span class="paso">PASO 5</span><h2>Reportes en Excel, automáticos</h2>
+    <ul><li><span><b>Diario</b> a la hora que usted elija</span></li><li><span><b>Semanal</b> cada lunes y <b>mensual</b> el día 1</span></li><li><span>Llegan solos al <b>correo</b> y quedan guardados</span></li><li><span>También se descargan con un toque</span></li></ul></div>
+  <div style="position:relative">
+    <div class="tel">
+      <div class="th"><small>EMPRESA ABC S.A.S.</small><b>Reportes</b></div>
+      <div class="tc">
+        <div class="card"><h4>📅 Reporte diario <span class="sw"></span></h4><div class="hb"><div><div style="font-size:9px;color:#6b7280">Hora de envío</div><b>4:30 p. m.</b></div><span>Cambiar</span></div></div>
+        <div class="card"><h4>📊 Reporte semanal</h4>
+          <div class="barras" id="barras"><div><i></i><em>Lun</em></div><div><i></i><em>Mar</em></div><div><i></i><em>Mié</em></div><div><i></i><em>Jue</em></div><div><i></i><em>Vie</em></div><div><i></i><em>Sáb</em></div><div><i></i><em>Dom</em></div></div>
+          <div style="font-size:9px;color:#6b7280;margin-top:5px">212 almuerzos esta semana · promedio 42 por día</div></div>
+        <div class="card"><h4>🗓️ Mensuales</h4><div style="display:flex;justify-content:space-between;font-size:11px;margin-top:6px"><span>Septiembre 2026</span><b style="color:#2563eb">Descargar</b></div></div>
+      </div>
+      <div class="nav"><div>Hoy</div><div class="on2">Reportes</div><div>Ajustes</div></div>
+    </div>
+    <div class="mail" id="mail"><div class="xls">XLS</div><div><b>Casino ABC – 19/10/2026</b><span>48 almuerzos · Excel adjunto</span></div></div>
+  </div>
+</section>
+
+<!-- 7 Control -->
+<section class="escena" id="e7">
+  <div class="texto"><span class="paso">USTED PONE LAS REGLAS</span><h2>Hora tope de registro</h2>
+    <ul><li><span>Ejemplo: registro abierto <b>hasta las 9:30 a. m.</b></span></li><li><span>Después, ya no se aceptan registros nuevos</span></li><li><span>Se cambia en segundos desde el celular</span></li></ul></div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:20px">
+    <div class="reloj"><div class="aguja ah" id="ah"></div><div class="aguja am" id="am"></div><div class="eje"></div></div>
+    <div class="hora-dig" id="hdig">9:25 a. m.</div>
+    <div class="cerrado" id="cerrado"><b>Registro cerrado</b><span>El registro de hoy cerró a las 9:30 a. m.</span></div>
+  </div>
+</section>
+
+<!-- 8 Beneficios -->
+<section class="escena" id="e8">
+  <div class="grid">
+    <div class="ben"><div class="ic">💸</div><b>Sin equipos costosos</b><span>Funciona con los celulares que ya tiene. Nada que instalar.</span></div>
+    <div class="ben"><div class="ic">🔒</div><b>Datos protegidos</b><span>Autorización de datos según la Ley 1581. En el casino solo se ve parte de la cédula.</span></div>
+    <div class="ben"><div class="ic">📱</div><b>En vivo, desde cualquier lugar</b><span>Varias personas viendo el panel al mismo tiempo.</span></div>
+    <div class="ben"><div class="ic">📊</div><b>Cuentas claras</b><span>Excel diario, semanal y mensual para cuadrar con el proveedor del casino.</span></div>
+  </div>
+</section>
+
+<!-- 9 Cierre -->
+<section class="escena" id="e9">
+  <div class="portada">
+    <div class="logo"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg></div>
+    <h1>Menos filas. Cero papel.</h1>
+    <p>Control total del casino desde el celular</p>
+    <div class="tag">Pida su demostración</div>
+  </div>
+</section>
+
+<div class="progreso" id="progreso"></div>
+<button class="otra" id="otra" onclick="location.reload()">↻ Ver de nuevo</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+new QRCode($('qr1'), { text: 'C261019-7G9Y5N', width: 150, height: 150 });
+new QRCode($('qr2'), { text: 'C261019-7G9Y5N', width: 110, height: 110 });
+
+const espera = ms => new Promise(r => setTimeout(r, ms));
+async function escribe(el, txt, vel = 80) {
+  el.classList.add('foco');
+  for (let i = 1; i <= txt.length; i++) { el.innerHTML = txt.slice(0, i) + '<span class="cursor"></span>'; await espera(vel); }
+  el.textContent = txt; el.classList.remove('foco');
+}
+function dedoA(el, telId) {
+  const d = $('dedo'), t = $(telId).getBoundingClientRect(), r = el.getBoundingClientRect();
+  d.style.left = (r.left - t.left + r.width / 2 - 29) + 'px';
+  d.style.top = (r.top - t.top + r.height / 2 - 29) + 'px';
+  d.style.opacity = 1;
+}
+function cuenta(el, hasta, ms, suf = '') {
+  const t0 = performance.now();
+  (function paso(t) { const p = Math.min(1, (t - t0) / ms); el.textContent = Math.round(hasta * p) + suf; if (p < 1) requestAnimationFrame(paso); })(t0);
+}
+
+const escenas = [
+  { id: 'e0', dur: 6000 },
+  { id: 'e1', dur: 9000 },
+  { id: 'e2', dur: 16000, run: async () => {
+      await espera(1200);
+      dedoA($('f-nombre'), 'tel-reg'); await espera(500); await escribe($('f-nombre'), 'María Torres');
+      dedoA($('f-cedula'), 'tel-reg'); await espera(500); await escribe($('f-cedula'), '43555666', 110);
+      dedoA($('f-area'), 'tel-reg'); await espera(600); $('f-area').firstChild.textContent = 'Producción';
+      await espera(500); dedoA($('firma'), 'tel-reg'); $('firma').classList.add('dibuja'); await espera(2500);
+      dedoA($('chk'), 'tel-reg'); await espera(600); $('chk').classList.add('si'); $('chk').textContent = '✓';
+      await espera(700); dedoA($('btn-reg'), 'tel-reg'); await espera(600); $('btn-reg').classList.add('tap'); $('btn-reg').textContent = 'Registrando…';
+  } },
+  { id: 'e3', dur: 8000 },
+  { id: 'e4', dur: 14000, run: async () => {
+      await espera(1800); $('tqr').style.top = '50%';
+      await espera(1600); $('res1').classList.add('ver');
+      await espera(4200); $('res1').style.display = 'none'; $('tqr').style.top = '120%';
+      await espera(1200); $('res2').style.display = 'block'; $('tqr').style.top = '50%';
+      await espera(1300); requestAnimationFrame(() => $('res2').classList.add('ver'));
+  } },
+  { id: 'e5', dur: 13000, run: async () => {
+      await espera(900);
+      cuenta($('n1'), 48, 2500); cuenta($('n2'), 31, 2500); cuenta($('n3'), 17, 2500); cuenta($('n4'), 65, 2500, '%');
+      $('barra').style.width = '65%';
+      const gente = [['AR','Ana Rojas','HSE · CC •••3456','Almorzó 12:05',1,'#16a34a'],['LG','Luis Gil','Logística · CC •••1222','Pendiente',0,'#db2777'],
+        ['CM','Carlos Mejía','Mantenimiento · CC •••5432','Almorzó 13:02',1,'#0891b2'],['PR','Pedro Ruiz','Visitante → HSE','Almorzó 12:40',1,'#7c3aed'],['MT','María Torres','Producción · CC •••5666','Pendiente',0,'#ea580c']];
+      for (let k = 0; k < gente.length; k++) {
+        const [ini, n, a, est, ok, col] = gente[k];
+        const el = document.createElement('div');
+        el.className = 'per' + (k === gente.length - 1 ? ' nuevo' : '');
+        el.innerHTML = `<div class="ini" style="background:${col}">${ini}</div><div class="i"><b>${n} ${k === gente.length - 1 ? '<span class="ch chn">NUEVO</span>' : ''}</b><span>${a}</span></div><span class="ch ${ok ? 'chv' : 'chg'}">${est}</span>`;
+        $('lista').prepend(el);
+        await espera(60); el.classList.add('ver');
+        await espera(k === gente.length - 2 ? 2600 : 1100);
+      }
+  } },
+  { id: 'e6', dur: 13000, run: async () => {
+      await espera(1200);
+      const alturas = [70, 88, 76, 95, 60, 8, 5];
+      document.querySelectorAll('#barras i').forEach((b, i) => setTimeout(() => b.style.height = alturas[i] + '%', i * 220));
+      await espera(4200); $('mail').classList.add('ver');
+  } },
+  { id: 'e7', dur: 8000, run: async () => {
+      const pinta = (h, m) => { $('ah').style.transform = `rotate(${(h % 12) * 30 + m * .5}deg)`; $('am').style.transform = `rotate(${m * 6}deg)`; };
+      pinta(9, 25); await espera(1500);
+      for (let m = 25; m <= 31; m++) { pinta(9, m); $('hdig').textContent = '9:' + m + ' a. m.'; await espera(330); }
+      $('hdig').style.color = '#f87171'; $('cerrado').classList.add('ver');
+  } },
+  { id: 'e8', dur: 10000 },
+  { id: 'e9', dur: 7000 },
+];
+
+const total = escenas.reduce((s, e) => s + e.dur, 0);
+document.title = 'Casino QR (' + Math.round(total / 1000) + ' s)';
+async function reproducir() {
+  const t0 = performance.now();
+  (function barra() { const p = Math.min(1, (performance.now() - t0) / total); $('progreso').style.width = (p * 100) + '%'; if (p < 1) requestAnimationFrame(barra); })();
+  for (const e of escenas) {
+    document.querySelectorAll('.escena').forEach(s => s.classList.remove('on'));
+    $(e.id).classList.add('on');
+    if (e.run) e.run();
+    await espera(e.dur);
+  }
+  window.terminado = true;
+  document.getElementById('otra').style.display = 'block';
+}
+function ajustar() {
+  const k = Math.min(innerWidth / 1280, innerHeight / 720);
+  document.getElementById('escenario').style.transform = 'translate(-50%,-50%) scale(' + k + ')';
+}
+addEventListener('resize', ajustar); ajustar();
+window.onload = () => setTimeout(reproducir, 300);
+</script>
+</body></html>
