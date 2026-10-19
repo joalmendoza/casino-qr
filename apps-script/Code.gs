@@ -7,7 +7,10 @@
  *
  * Hoja "Licencias" (una fila por cliente):
  *   Codigo | Cliente | Estado | Vence | PIN | HoraTope | Areas | RazonSocial | NIT |
- *   Direccion | Ciudad | CorreoDatos | Telefono | HojaDatos | Notas
+ *   Direccion | Ciudad | CorreoDatos | Telefono | HojaDatos | Notas | CorreoReportes | CorreosLectura
+ *
+ *   CorreoReportes: a quién se le manda el Excel diario y mensual (varios separados por coma)
+ *   CorreosLectura: quiénes pueden ver la planilla en vivo, solo lectura (varios separados por coma)
  *
  * Planilla de cada cliente, hoja "Registros":
  *   A ID | B Fecha | C HoraIngreso | D Nombre | E Area | F Firma (link Drive) | G Almorzo | H HoraAlmuerzo
@@ -21,6 +24,7 @@ const CONTACTO_PROVEEDOR = 'tu-correo@ejemplo.com · WhatsApp 300 000 0000';
 const URL_APP = 'https://joalmendoza.github.io/casino-qr/';   // cámbiala si publicas en Cloudflare Pages
 const AVISO_DIAS = 5;      // días antes del vencimiento en que empieza el aviso
 const GRACIA_DIAS = 3;     // días después del vencimiento en que todavía funciona (con aviso)
+const HORA_REPORTE = 15;   // hora (0-23) en que se genera y envía el Excel del día. El mensual sale el día 1 a las 6 a. m.
 
 const HORA_TOPE_DEFECTO = '09:30';
 const AREAS_DEFECTO = 'Producción, Mantenimiento, Control calidad, Logística, Seguridad, HSE, Gestión Humana, Contabilidad, Visitante';
@@ -28,7 +32,7 @@ const HOJA_LIC = 'Licencias';
 const HOJA_REG = 'Registros';
 const CARPETA_RAIZ = 'Casino QR - Clientes';
 const COLS = ['Codigo', 'Cliente', 'Estado', 'Vence', 'PIN', 'HoraTope', 'Areas', 'RazonSocial', 'NIT',
-  'Direccion', 'Ciudad', 'CorreoDatos', 'Telefono', 'HojaDatos', 'Notas'];
+  'Direccion', 'Ciudad', 'CorreoDatos', 'Telefono', 'HojaDatos', 'Notas', 'CorreoReportes', 'CorreosLectura'];
 
 // ================= Entrada web =================
 
@@ -174,6 +178,13 @@ function hojaLicencias() {
     const estados = SpreadsheetApp.newDataValidation().requireValueInList(['Activo', 'Suspendido'], true).build();
     hoja.getRange('C2:C1000').setDataValidation(estados);
   }
+  // Si la hoja se creó con una versión anterior, agrega las columnas nuevas al final
+  const cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0].map(String);
+  const faltan = COLS.filter(c => cab.indexOf(c) < 0);
+  if (faltan.length) {
+    hoja.getRange(1, cab.length + 1, 1, faltan.length).setValues([faltan])
+      .setFontWeight('bold').setBackground('#1e3a8a').setFontColor('#ffffff');
+  }
   return hoja;
 }
 
@@ -227,9 +238,11 @@ function hojaRegistros(lic) {
   }
   if (!ss) {
     ss = SpreadsheetApp.create('Casino QR - ' + lic.Cliente + ' (' + lic.Codigo + ')');
-    DriveApp.getFileById(ss.getId()).moveTo(carpetaRaiz());
+    ss.setSpreadsheetTimeZone(zona());
+    DriveApp.getFileById(ss.getId()).moveTo(carpetaCliente(lic));
     escribirLicencia(lic, 'HojaDatos', ss.getId());
     lic.HojaDatos = ss.getId();
+    compartirEnVivo(lic, ss);
   }
   let hoja = ss.getSheetByName(HOJA_REG);
   if (!hoja) {
@@ -242,7 +255,41 @@ function hojaRegistros(lic) {
     hoja.getRange('H:H').setNumberFormat('@');
     hoja.getRange('J:J').setNumberFormat('@');
   }
+  if (!ss.getSheetByName('Hoy')) crearHojaHoy(ss);
   return hoja;
+}
+
+// Pestaña "Hoy": muestra solo los registros del día con totales. Se actualiza sola con cada registro
+function crearHojaHoy(ss) {
+  const h = ss.insertSheet('Hoy', 0);
+  const hoyTxt = 'TEXT(TODAY(),"yyyy-mm-dd")';
+  h.getRange('A1').setValue('Registros de hoy').setFontSize(14).setFontWeight('bold');
+  h.getRange('A2').setFormula('=TEXT(TODAY(),"dd/mm/yyyy")');
+  h.getRange('C1:C3').setValues([['Ingresaron'], ['Almorzaron'], ['Sin almorzar']]).setFontWeight('bold');
+  h.getRange('D1').setFormula('=COUNTIF(Registros!B:B,' + hoyTxt + ')');
+  h.getRange('D2').setFormula('=COUNTIFS(Registros!B:B,' + hoyTxt + ',Registros!G:G,"SI")');
+  h.getRange('D3').setFormula('=D1-D2');
+  h.getRange('A5').setFormula('=IFERROR(QUERY(Registros!A2:K,"select J, D, E, I, C, G, H where B = \'"&' + hoyTxt +
+    '&"\' order by C desc label J \'Cédula\', D \'Nombre\', E \'Área\', I \'Visita a\', C \'Ingreso\', G \'Almorzó\', H \'Hora almuerzo\'",0),"Todavía no hay registros hoy")');
+  h.getRange('A5:G5').setFontWeight('bold').setBackground('#1e3a8a').setFontColor('#ffffff');
+  h.setFrozenRows(5);
+  h.setColumnWidths(1, 7, 120);
+  h.setColumnWidth(2, 220);
+}
+
+// Comparte la planilla del cliente como solo lectura con los correos de la columna CorreosLectura
+function compartirEnVivo(lic, ss) {
+  const correos = listaCorreos(lic.CorreosLectura);
+  if (correos.length) ss.addViewers(correos);
+  return correos;
+}
+
+function listaCorreos(txt) {
+  return String(txt || '').split(/[,;\s]+/).map(c => c.trim()).filter(c => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c));
+}
+
+function carpetaCliente(lic) {
+  return carpetaGuardada('CLIENTE_' + lic.Codigo, () => carpetaRaiz().createFolder(lic.Cliente + ' (' + lic.Codigo + ')'));
 }
 
 function carpetaRaiz() {
@@ -250,7 +297,7 @@ function carpetaRaiz() {
 }
 
 function guardarFirma(lic, id, nombre, dataUrl) {
-  const carpeta = carpetaGuardada('FIRMAS_' + lic.Codigo, () => carpetaRaiz().createFolder('Firmas - ' + lic.Cliente + ' (' + lic.Codigo + ')'));
+  const carpeta = carpetaGuardada('FIRMAS_' + lic.Codigo, () => carpetaCliente(lic).createFolder('Firmas'));
   const bytes = Utilities.base64Decode(dataUrl.split(',')[1]);
   return carpeta.createFile(Utilities.newBlob(bytes, 'image/png', id + '_' + nombre + '.png')).getUrl();
 }
@@ -275,6 +322,10 @@ function onOpen() {
     .addItem('Activar (fila seleccionada)', 'menuActivar')
     .addSeparator()
     .addItem('Ver links del cliente (fila seleccionada)', 'menuLinks')
+    .addItem('Compartir planilla en vivo (fila seleccionada)', 'menuCompartir')
+    .addSeparator()
+    .addItem('Generar Excel de hoy ahora (fila seleccionada)', 'menuReporteHoy')
+    .addItem('Activar reportes automáticos (diario y mensual)', 'activarReportes')
     .addToUi();
 }
 
@@ -322,6 +373,180 @@ function menuLinks() {
     'PIN: ' + lic.PIN);
 }
 
+function menuCompartir() {
+  const lic = filaSeleccionada();
+  if (!lic) return;
+  const ss = hojaRegistros(lic).getParent();
+  const correos = compartirEnVivo(lic, ss);
+  SpreadsheetApp.getUi().alert(correos.length
+    ? 'Compartida como solo lectura con:\n' + correos.join('\n') + '\n\nLink de la planilla (pestaña "Hoy"):\n' + ss.getUrl()
+    : 'Escribe primero los correos en la columna CorreosLectura (separados por coma).');
+}
+
+function menuReporteHoy() {
+  const lic = filaSeleccionada();
+  if (!lic) return;
+  const r = reporteDiarioCliente(lic, hoy());
+  SpreadsheetApp.getUi().alert(r);
+}
+
+// ================= Reportes automáticos en Excel =================
+
+// Crea los activadores: Excel diario a la HORA_REPORTE y mensual el día 1 a las 6 a. m.
+function activarReportes() {
+  ScriptApp.getProjectTriggers()
+    .filter(t => ['reportesDiarios', 'reportesMensuales'].indexOf(t.getHandlerFunction()) >= 0)
+    .forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('reportesDiarios').timeBased().everyDays(1).atHour(HORA_REPORTE).nearMinute(0).inTimezone(zona()).create();
+  ScriptApp.newTrigger('reportesMensuales').timeBased().onMonthDay(1).atHour(6).inTimezone(zona()).create();
+  const msg = 'Reportes automáticos activados: Excel diario a las ' + hora12(String(HORA_REPORTE).padStart(2, '0') + ':00') +
+    ' y mensual el día 1 de cada mes.';
+  try { SpreadsheetApp.getUi().alert(msg); } catch (e) { Logger.log(msg); }
+}
+
+function reportesDiarios() {
+  const fecha = hoy();
+  clientesParaReporte().forEach(lic => {
+    try { Logger.log(reporteDiarioCliente(lic, fecha)); } catch (e) { Logger.log(lic.Codigo + ': ' + e); }
+  });
+}
+
+function reportesMensuales() {
+  const d = new Date();
+  const anterior = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+  const mes = Utilities.formatDate(anterior, zona(), 'yyyy-MM');
+  clientesParaReporte().forEach(lic => {
+    try { Logger.log(reporteMensualCliente(lic, mes)); } catch (e) { Logger.log(lic.Codigo + ': ' + e); }
+  });
+}
+
+// Clientes con planilla de datos y licencia no bloqueada
+function clientesParaReporte() {
+  const valores = hojaLicencias().getDataRange().getValues();
+  const lista = [];
+  for (let i = 1; i < valores.length; i++) {
+    const lic = buscarLicencia(valores[i][0]);
+    if (lic && lic.HojaDatos && !estadoLicencia(lic).bloqueado) lista.push(lic);
+  }
+  return lista;
+}
+
+function reporteDiarioCliente(lic, fecha) {
+  const filas = registrosDe(lic, f => f[1] === fecha);
+  const alm = filas.filter(f => f[6] === 'SI').length;
+  const fechaLinda = fecha.split('-').reverse().join('/');
+  const nombre = 'Casino_' + lic.Codigo + '_' + fecha;
+
+  const resumen = [['Cliente', lic.Cliente, ''], ['Fecha', fechaLinda, ''], ['Personas registradas', filas.length, ''],
+    ['Almorzaron', alm, ''], ['Sin almorzar', filas.length - alm, ''],
+    ['Visitantes', filas.filter(f => f[4] === 'Visitante').length, ''], ['', '', ''], ['Área', 'Registrados', 'Almorzaron']]
+    .concat(porArea(filas).map(a => [a.area, a.reg, a.alm]));
+
+  const blob = crearExcel(nombre, [
+    { nombre: 'Registro', texto: true, filas: [COLS_DETALLE].concat(filas.map(filaDetalle)) },
+    { nombre: 'Resumen', filas: resumen }
+  ]);
+  const archivo = carpetaReportes(lic, fecha.slice(0, 7)).createFile(blob);
+
+  const asunto = 'Casino ' + lic.Cliente + ' – ' + fechaLinda + ': ' + alm + (alm === 1 ? ' almuerzo' : ' almuerzos');
+  const cuerpo = '<p>Reporte del casino del <b>' + fechaLinda + '</b>.</p><ul><li>Personas registradas: <b>' + filas.length +
+    '</b></li><li>Almorzaron: <b>' + alm + '</b></li><li>Sin almorzar: <b>' + (filas.length - alm) + '</b></li></ul>' +
+    '<p>El detalle va en el Excel adjunto.</p>';
+  const enviado = enviarReporte(lic, asunto, cuerpo, blob);
+  return lic.Codigo + ': Excel del ' + fechaLinda + ' guardado (' + archivo.getName() + ')' + (enviado ? ' y enviado a ' + enviado : '');
+}
+
+function reporteMensualCliente(lic, mes) {
+  const filas = registrosDe(lic, f => f[1].slice(0, 7) === mes);
+  const [anio, m] = mes.split('-').map(Number);
+  const nombreMes = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][m - 1];
+  const nombre = 'Casino_' + lic.Codigo + '_' + mes + '_mensual';
+
+  const dias = [['Fecha', 'Día', 'Registrados', 'Almorzaron']];
+  const nombresDia = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  for (let d = 1; d <= new Date(anio, m, 0).getDate(); d++) {
+    const f = mes + '-' + String(d).padStart(2, '0');
+    const delDia = filas.filter(x => x[1] === f);
+    dias.push([String(d).padStart(2, '0') + '/' + String(m).padStart(2, '0') + '/' + anio, nombresDia[new Date(anio, m - 1, d).getDay()],
+      delDia.length, delDia.filter(x => x[6] === 'SI').length]);
+  }
+  const alm = filas.filter(f => f[6] === 'SI').length;
+  const resumen = [['Cliente', lic.Cliente, '', ''], ['Mes', nombreMes + ' ' + anio, '', ''],
+    ['Total registros', filas.length, '', ''], ['Total almuerzos', alm, '', ''], ['', '', '', ''],
+    ['Área', 'Registrados', 'Almorzaron', 'Visitas recibidas']]
+    .concat(porArea(filas).map(a => [a.area, a.reg, a.alm, a.visitas]));
+
+  const blob = crearExcel(nombre, [
+    { nombre: 'Por día', filas: dias },
+    { nombre: 'Resumen', filas: resumen },
+    { nombre: 'Detalle', texto: true, filas: [COLS_DETALLE].concat(filas.map(filaDetalle)) }
+  ]);
+  const archivo = carpetaReportes(lic, mes).createFile(blob);
+  const asunto = 'Casino ' + lic.Cliente + ' – resumen de ' + nombreMes + ' ' + anio + ': ' + alm + (alm === 1 ? ' almuerzo' : ' almuerzos');
+  const cuerpo = '<p>Resumen del casino de <b>' + nombreMes + ' ' + anio + '</b>.</p><ul><li>Total registros: <b>' + filas.length +
+    '</b></li><li>Total almuerzos: <b>' + alm + '</b></li></ul><p>El detalle por día y por área va en el Excel adjunto.</p>';
+  const enviado = enviarReporte(lic, asunto, cuerpo, blob);
+  return lic.Codigo + ': Excel de ' + nombreMes + ' guardado (' + archivo.getName() + ')' + (enviado ? ' y enviado a ' + enviado : '');
+}
+
+const COLS_DETALLE = ['Cédula', 'Nombre', 'Área', 'Visita a', 'Fecha', 'Hora ingreso', 'Almorzó', 'Hora almuerzo'];
+
+function filaDetalle(f) {
+  return [f[9], f[3], f[4], f[8], f[1].split('-').reverse().join('/'), f[2], f[6], f[7]];
+}
+
+function registrosDe(lic, filtro) {
+  return hojaRegistros(lic).getDataRange().getDisplayValues().slice(1).filter(filtro)
+    .sort((a, b) => (a[1] + a[2]).localeCompare(b[1] + b[2]));
+}
+
+function porArea(filas) {
+  const areas = {};
+  filas.forEach(f => {
+    const a = areas[f[4]] = areas[f[4]] || { area: f[4], reg: 0, alm: 0, visitas: 0 };
+    a.reg++;
+    if (f[6] === 'SI') a.alm++;
+    if (f[8]) (areas[f[8]] = areas[f[8]] || { area: f[8], reg: 0, alm: 0, visitas: 0 }).visitas++;
+  });
+  return Object.keys(areas).sort().map(k => areas[k]);
+}
+
+function carpetaReportes(lic, mes) {
+  const reportes = carpetaGuardada('REPORTES_' + lic.Codigo, () => carpetaCliente(lic).createFolder('Reportes'));
+  const sub = reportes.getFoldersByName(mes);
+  return sub.hasNext() ? sub.next() : reportes.createFolder(mes);
+}
+
+// Arma una planilla temporal, la exporta como .xlsx y la borra
+function crearExcel(nombre, hojas) {
+  const ss = SpreadsheetApp.create(nombre);
+  ss.setSpreadsheetTimeZone(zona());
+  hojas.forEach((h, k) => {
+    const sh = k === 0 ? ss.getSheets()[0].setName(h.nombre) : ss.insertSheet(h.nombre);
+    const ancho = Math.max.apply(null, h.filas.map(f => f.length));
+    const datos = h.filas.map(f => f.concat(Array(ancho - f.length).fill('')));
+    const rango = sh.getRange(1, 1, datos.length, ancho);
+    if (h.texto) rango.setNumberFormat('@');   // cédulas y horas tal cual
+    rango.setValues(datos);
+    sh.getRange(1, 1, 1, ancho).setFontWeight('bold').setBackground('#1e3a8a').setFontColor('#ffffff');
+    sh.setFrozenRows(1);
+    sh.autoResizeColumns(1, ancho);
+  });
+  SpreadsheetApp.flush();
+  const url = 'https://docs.google.com/spreadsheets/d/' + ss.getId() + '/export?format=xlsx';
+  const blob = UrlFetchApp.fetch(url, { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() } })
+    .getBlob().setName(nombre + '.xlsx');
+  DriveApp.getFileById(ss.getId()).setTrashed(true);
+  return blob;
+}
+
+function enviarReporte(lic, asunto, cuerpo, blob) {
+  const correos = listaCorreos(lic.CorreoReportes);
+  if (!correos.length) return '';
+  MailApp.sendEmail({ to: correos.join(','), subject: asunto, htmlBody: cuerpo, attachments: [blob], name: 'Casino QR' });
+  return correos.join(', ');
+}
+
 // Ejecútalo una vez desde el editor para dar permisos y crear la hoja Licencias con un cliente de ejemplo
 function instalar() {
   const hoja = hojaLicencias();
@@ -330,7 +555,7 @@ function instalar() {
     vence.setMonth(vence.getMonth() + 1);
     hoja.appendRow(['DEMO01', 'Cliente de prueba', 'Activo', vence, '1234', HORA_TOPE_DEFECTO, AREAS_DEFECTO,
       'EMPRESA DE PRUEBA S.A.S.', '900.000.000-0', 'Calle 1 # 2-3', 'Bogotá, Colombia',
-      'datos@empresa.com', '(+57) 300 000 0000', '', 'Fila de ejemplo']);
+      'datos@empresa.com', '(+57) 300 000 0000', '', 'Fila de ejemplo', '', '']);
   }
   Logger.log('Listo. Zona horaria: ' + zona());
 }

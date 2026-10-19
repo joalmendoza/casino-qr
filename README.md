@@ -123,6 +123,8 @@ En la hoja **Licencias** agrega una fila:
 | RazonSocial, NIT, Direccion, Ciudad, CorreoDatos, Telefono | Datos del cliente para la autorización de datos y el aviso de privacidad |
 | HojaDatos | No la toques: se llena sola con la planilla de datos del cliente |
 | Notas | Lo que quieras (plan, valor, contacto) |
+| CorreoReportes | Correos que reciben el Excel diario y el mensual (separados por coma) |
+| CorreosLectura | Correos que pueden ver la planilla en vivo, solo lectura (separados por coma) |
 
 Recarga la planilla y aparece el menú **Casino QR**. Selecciona la fila del cliente y usa **Ver links del cliente**: te da los 3 links con su código (`registro.html?c=ABC01`, etc.) y su PIN para entregárselos.
 
@@ -136,6 +138,23 @@ Genera un QR que apunte al link de registro **con el código del cliente** (ej: 
 > Ojo: cada vez que cambies `Code.gs` hay que hacer **Implementar → Gestionar implementaciones → Editar → Nueva versión**, si no sigue corriendo la versión anterior.
 
 ---
+
+## Reportes automáticos en Excel
+Una vez montado el servidor, en la planilla de licencias usa **Casino QR → Activar reportes automáticos** (solo una vez). Desde ahí:
+
+- **Todos los días a las 3:00 p. m.** se genera un Excel por cliente con la lista del día (cédula, nombre, área, visita a, hora de ingreso, si almorzó y a qué hora) y una hoja de resumen con totales y por área.
+- **El día 1 de cada mes a las 6:00 a. m.** sale el Excel del mes anterior: almuerzos por día, resumen por área y el detalle completo. Sirve para cuadrar con el proveedor del casino.
+- Se guardan en tu Drive: `Casino QR - Clientes / <Cliente> / Reportes / 2026-10 / Casino_ABC01_2026-10-19.xlsx`.
+- Si el cliente tiene correos en la columna **CorreoReportes**, se los manda adjuntos.
+- A los clientes suspendidos no se les generan.
+- La hora se cambia en `HORA_REPORTE` (arriba en `Code.gs`) y luego se vuelve a usar **Activar reportes automáticos**.
+- Para probar sin esperar: selecciona la fila del cliente y usa **Generar Excel de hoy ahora**.
+
+## Ver los registros en tiempo real desde varios equipos
+- La planilla de cada cliente tiene una pestaña **"Hoy"** con los registros del día (los más recientes arriba) y los totales: ingresaron, almorzaron y sin almorzar. Se actualiza sola con cada registro y cada escaneo.
+- Escribe los correos en la columna **CorreosLectura** y usa **Casino QR → Compartir planilla en vivo**. Esas personas la abren desde el computador o desde la app de Google Sheets en el celular, en **solo lectura**, y ven cómo va entrando la gente sin recargar.
+- El **reporte de la app** (`reporte.html`) también se actualiza solo cada 30 segundos, así que se puede dejar abierto en una pantalla del casino o de portería.
+- No se recomienda conectar un Excel de escritorio "en vivo": exige publicar los datos en internet y quedarían expuestos nombres y cédulas.
 
 ## Suscripción mensual y bloqueo por no pago
 Cada cliente tiene una fila en la hoja **Licencias** con su fecha de vencimiento. El servidor la revisa en cada registro y en cada escaneo:

@@ -43,6 +43,10 @@
     </div>
     <button class="btn" id="btn-csv">Descargar CSV</button>
     <button class="btn sec" id="btn-refrescar">Actualizar</button>
+    <label class="check" style="margin-top:12px">
+      <input type="checkbox" id="auto" checked>
+      <span>Actualizar solo cada 30 segundos <span class="dato" id="ultima"></span></span>
+    </label>
   </div>
 </div>
 
@@ -56,6 +60,7 @@
     const r = await api('resumen', { pin });
     if (!r.ok) { alert(r.error); return false; }
     mostrarLicencia(r.licencia, $('aviso-licencia'));
+    $('ultima').textContent = '· última: ' + new Date().toTimeString().slice(0, 8);
     filas = r.filas;
     const alm = filas.filter(f => f.almorzo).length;
     $('k-ing').textContent = filas.length;
@@ -104,6 +109,11 @@
     }
   };
   $('btn-refrescar').onclick = cargar;
+
+  // Actualización automática mientras el reporte está abierto (sirve para tenerlo en pantalla en portería o en el casino)
+  setInterval(() => {
+    if (pin && $('auto').checked && !document.hidden && !$('paso-datos').classList.contains('hidden')) cargar();
+  }, 30000);
 
   $('btn-csv').onclick = () => {
     const cab = 'ID;Fecha;Nombre;Area;HoraIngreso;Almorzo;HoraAlmuerzo;AreaVisita;Cedula';
