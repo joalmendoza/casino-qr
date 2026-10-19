@@ -9,7 +9,7 @@
  *   Codigo | Cliente | Estado | Vence | PIN | HoraTope | Areas | RazonSocial | NIT |
  *   Direccion | Ciudad | CorreoDatos | Telefono | HojaDatos | Notas | CorreoReportes | CorreosLectura
  *
- *   CorreoReportes: a quién se le manda el Excel diario y mensual (varios separados por coma)
+ *   CorreoReportes: a quién se le manda el Excel semanal y mensual (varios separados por coma)
  *   CorreosLectura: quiénes pueden ver la planilla en vivo, solo lectura (varios separados por coma)
  *
  * Planilla de cada cliente, hoja "Registros":

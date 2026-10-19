@@ -123,7 +123,7 @@ En la hoja **Licencias** agrega una fila:
 | RazonSocial, NIT, Direccion, Ciudad, CorreoDatos, Telefono | Datos del cliente para la autorización de datos y el aviso de privacidad |
 | HojaDatos | No la toques: se llena sola con la planilla de datos del cliente |
 | Notas | Lo que quieras (plan, valor, contacto) |
-| CorreoReportes | Correos que reciben el Excel diario y el mensual (separados por coma) |
+| CorreoReportes | Correos que reciben el Excel semanal y el mensual (separados por coma) |
 | CorreosLectura | Correos que pueden ver la planilla en vivo, solo lectura (separados por coma) |
 
 Recarga la planilla y aparece el menú **Casino QR**. Selecciona la fila del cliente y usa **Ver links del cliente**: te da los 3 links con su código (`registro.html?c=ABC01`, etc.) y su PIN para entregárselos.
@@ -189,7 +189,6 @@ Para ver cómo se ve sin conectar nada, en modo demo usa estos links:
 ## Cosas que se pueden agregar después
 - Lista de trabajadores precargada para elegir en vez de escribir.
 - Turnos de almuerzo (bloques horarios por área) para ordenar mejor la fila.
-- Cierre automático: un activador diario en Apps Script que mande el resumen por correo a las 15:00.
 - Que el QR expire a cierta hora.
 
 ## Tratamiento de datos personales (Colombia)
